@@ -1,0 +1,7 @@
+* text=auto
+
+# Force Linux scripts to stay LF
+*.sh text eol=lf
+
+# Python files also LF
+*.py text eol=lf
