@@ -1,12 +1,18 @@
-from .memory import add_item, remove_item
+from datetime import datetime
+import webbrowser
 
-def handle_add(topic, item):
-    add_item(topic, item)
-    return f"Added '{item}' to '{topic}'."
 
-def handle_remove(topic, item):
-    success = remove_item(topic, item)
+def run_command(text: str):
+    """Built-in commands."""
+    if "time" in text:
+        return datetime.now().strftime("The time is %H:%M")
 
-    if success:
-        return f"Removed '{item}' from '{topic}'."
-    return "Item not found."
+    if "youtube" in text:
+        webbrowser.open("https://youtube.com")
+        return "Opening YouTube..."
+
+    if "google" in text:
+        webbrowser.open("https://google.com")
+        return "Opening Google..."
+
+    return None
