@@ -1,7 +1,5 @@
-numpy
-scikit-learn
-sentence-transformers
-torch
 fastapi
 uvicorn
-python-dotenv
+numpy
+sentence-transformers
+torch

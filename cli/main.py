@@ -1,16 +1,19 @@
 from app.core import process_input
 
-def run():
-    print("Jarvis: Hello! Type 'exit' to quit.")
+
+def main():
+    print("Jarvis: Hello! I am your assistant. Type 'exit' to quit.")
 
     while True:
-        user = input("You: ")
+        user_input = input("You: ")
 
-        if user.lower() == "exit":
+        if user_input.lower() == "exit":
+            print("Jarvis: Goodbye!")
             break
 
-        response = process_input(user)
-        print("Jarvis:", response)
+        answer = process_input(user_input)
+        print("Jarvis:", answer)
+
 
 if __name__ == "__main__":
-    run()
+    main()
