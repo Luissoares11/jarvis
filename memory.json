@@ -1,0 +1,12 @@
+{
+    "the commands i use to build websites": [
+        "git add .",
+        "git commit -m \"\"",
+        "npm run deploy",
+        "npm run dev",
+        "git push"
+    ],
+    "my name": [
+        "luis"
+    ]
+}

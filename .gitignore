@@ -9,7 +9,6 @@ venv/
 .env/
 
 # Memory / embeddings
-memory.json
 *.pt
 *.bin
 
