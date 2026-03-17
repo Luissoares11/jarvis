@@ -22,6 +22,3 @@ Thumbs.db
 
 # VSCode settings
 .vscode/
-
-# Optional: memory files (if you don't want them in Git)
-memory.json
