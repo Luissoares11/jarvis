@@ -16,8 +16,15 @@ def detect_intent(text: str) -> str:
     ]):
         return "list_memories"
 
-    if "remember" in text:
+    # typo-tolerant remember
+    if "remember" in text or "rembember" in text or "remeber" in text:
         return "remember"
+
+    if text.startswith("replace "):
+        return "replace_item"
+
+    if text.startswith("move "):
+        return "move_item"
 
     if any(text.startswith(prefix) for prefix in ["forget ", "delete "]):
         return "delete_topic"
@@ -25,7 +32,11 @@ def detect_intent(text: str) -> str:
     if any(text.startswith(prefix) for prefix in ["remove ", "delete item "]):
         return "remove_item"
 
-    if " add " in f" {text} " or text.startswith("add ") or text.startswith("append "):
+    if (
+        any(text.startswith(prefix) for prefix in ["add ", "append "])
+        or " add " in f" {text} "
+        or text.startswith("and ")
+    ):
         return "add"
 
     if any(word in text for word in [
@@ -39,7 +50,8 @@ def detect_intent(text: str) -> str:
     if text.startswith("git ") or text.startswith("npm "):
         return "command"
 
-    if text in ["hello", "hi", "hey", "hello jarvis", "hey jarvis"]:
+    # more flexible greetings
+    if any(greet in text for greet in ["hello", "hi", "hey"]):
         return "greeting"
 
     return "unknown"

@@ -12,6 +12,9 @@ from .memory import (
     delete_memory,
     list_memories,
     system_status,
+    get_item_from_last_topic,
+    replace_in_last_topic,
+    move_in_last_topic,
 )
 from .personality import say
 from .utils import clean_text
@@ -70,25 +73,53 @@ def process_input(user_input: str):
         response = delete_memory(match.group(1)) if match else say("unknown")
 
     elif intent == "remove_item":
-        match = re.search(r"(?:remove|delete item) (.+)", text_clean)
-        response = remove_from_last_topic(match.group(1)) if match else say("unknown")
+        match = re.search(r"(?:remove|delete item) (.+)", text, re.IGNORECASE)
+        if match:
+            target = match.group(1).strip()
+
+            # if target looks like a topic, delete the topic
+            topic_result = recall_topic(target)
+            if topic_result and topic_result["mode"] in ["topic_exact", "topic_fuzzy", "topic_semantic"]:
+                response = delete_memory(topic_result["topic"])
+            else:
+                response = remove_from_last_topic(target)
+        else:
+            response = say("unknown")
+    elif intent == "replace_item":
+        match = re.search(r"replace (.+?) with (.+)", text, re.IGNORECASE)
+        response = replace_in_last_topic(match.group(1), match.group(2)) if match else say("unknown")
+
+    elif intent == "move_item":
+        match = re.search(r"move (.+?) to (.+)", text, re.IGNORECASE)
+        response = move_in_last_topic(match.group(1), match.group(2)) if match else say("unknown")
 
     elif intent == "add":
-        match = re.search(r"(?:add|append) (.+?) to (.+)", text_clean)
+        match = re.search(r"(?:add|append) (.+?) to (.+)", text, re.IGNORECASE)
         if match:
             value = match.group(1).strip()
             key = match.group(2).strip()
             response = update_memory(key, value)
         else:
-            match = re.search(r"(?:add|append) (.+)", text_clean)
-            response = update_last_topic(match.group(1).strip()) if match else say("unknown")
+            match = re.search(r"(?:add|append) (.+)", text, re.IGNORECASE)
+            if match:
+                response = update_last_topic(match.group(1).strip())
+            elif text.strip().lower().startswith("and "):
+                response = update_last_topic(text.strip()[4:].strip())
+            else:
+                response = say("unknown")
 
     elif intent == "recall":
-        result = recall_topic(text)
-        if result:
-            response = format_items(result["values"])
+        # direct positional query, e.g. "what is the second command"
+        match = re.search(r"what is (.+)", text, re.IGNORECASE)
+        if match and any(word in text_clean for word in ["first", "second", "third", "fourth", "forth", "fifth", "last"]):
+            item, error = get_item_from_last_topic(match.group(1))
+            response = item if not error else error
         else:
-            response = say("unknown")
+            result = recall_topic(text)
+            if result:
+                response = format_items(result["values"])
+            else:
+                response = say("unknown")
 
     elif intent == "system":
         response = handle_system_command(text_clean)
@@ -97,7 +128,6 @@ def process_input(user_input: str):
         response = run_command(text_clean) or say("unknown")
 
     else:
-        # final semantic attempt
         result = recall_topic(text)
         if result:
             response = format_items(result["values"])

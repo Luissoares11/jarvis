@@ -5,6 +5,8 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 def cosine_similarity(a, b) -> float:
+    if a is None or b is None:
+        return 0.0
     denom = np.linalg.norm(a) * np.linalg.norm(b)
     if denom == 0:
         return 0.0
