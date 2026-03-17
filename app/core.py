@@ -1,24 +1,46 @@
 import re
 
 from .commands import run_command
+from .intent import detect_intent
+from .logger import log_event
 from .memory import (
     remember,
-    recall,
+    recall_topic,
     update_memory,
     update_last_topic,
     remove_from_last_topic,
     delete_memory,
     list_memories,
-    user_memory,
+    system_status,
 )
 from .personality import say
 from .utils import clean_text
 
 
-def format_memory_items(items):
+def format_items(items):
     if not items:
         return say("unknown")
     return "\n".join(f"- {item}" for item in items)
+
+
+def handle_system_command(text_clean: str):
+    if text_clean == "jarvis status":
+        status = system_status()
+        return (
+            f"Topics: {status['topics']}\n"
+            f"Items: {status['items']}\n"
+            f"Last topic: {status['last_topic']}\n"
+            f"Last item: {status['last_item']}\n"
+            f"Last intent: {status['last_intent']}"
+        )
+
+    if text_clean == "jarvis memory":
+        memories = list_memories()
+        if not memories:
+            return "I don't know anything yet, sir."
+        return "\n".join(f"- {m}" for m in memories)
+
+    return say("unknown")
 
 
 def process_input(user_input: str):
@@ -26,67 +48,62 @@ def process_input(user_input: str):
     text_clean = clean_text(text)
 
     if not text_clean:
-        return "Awaiting your input, sir."
+        response = say("empty")
+        log_event("user", user_input)
+        log_event("jarvis", response)
+        return response
 
-    # personality / greetings
-    if text_clean in ["hello", "hi", "hey", "hello jarvis", "hey jarvis"]:
-        return "Hello, sir."
+    intent = detect_intent(text_clean)
 
-    # teach memory
-    if "remember" in text_clean:
-        return remember(text)
+    if intent == "greeting":
+        response = say("greeting")
 
-    # list all memory topics
-    if any(phrase in text_clean for phrase in [
-        "what do you know",
-        "tell me what you know",
-        "list memories",
-        "show memories",
-    ]):
+    elif intent == "remember":
+        response = remember(text)
+
+    elif intent == "list_memories":
         memories = list_memories()
-        if not memories:
-            return "I don't know anything yet, sir."
-        return "\n".join(f"- {k}" for k in memories)
+        response = "\n".join(f"- {m}" for m in memories) if memories else "I don't know anything yet, sir."
 
-    # delete full topic
-    match = re.search(r"(?:forget|delete) (.+)", text_clean)
-    if match and "remove " not in text_clean:
-        return delete_memory(match.group(1))
+    elif intent == "delete_topic":
+        match = re.search(r"(?:forget|delete) (.+)", text_clean)
+        response = delete_memory(match.group(1)) if match else say("unknown")
 
-    # remove from current topic
-    match = re.search(r"(?:remove) (.+)", text_clean)
-    if match:
-        return remove_from_last_topic(match.group(1))
+    elif intent == "remove_item":
+        match = re.search(r"(?:remove|delete item) (.+)", text_clean)
+        response = remove_from_last_topic(match.group(1)) if match else say("unknown")
 
-    # add to explicit topic
-    match = re.search(r"(?:add|append) (.+?) to (.+)", text_clean)
-    if match:
-        value = match.group(1).strip()
-        key = match.group(2).strip()
-        return update_memory(key, value)
+    elif intent == "add":
+        match = re.search(r"(?:add|append) (.+?) to (.+)", text_clean)
+        if match:
+            value = match.group(1).strip()
+            key = match.group(2).strip()
+            response = update_memory(key, value)
+        else:
+            match = re.search(r"(?:add|append) (.+)", text_clean)
+            response = update_last_topic(match.group(1).strip()) if match else say("unknown")
 
-    # add to last topic
-    match = re.search(r"(?:add|append) (.+)", text_clean)
-    if match:
-        return update_last_topic(match.group(1).strip())
-
-    # recall
-    if any(word in text_clean for word in [
-        "what", "who", "how", "tell", "list", "show", "know", "commands", "name"
-    ]):
-        result = recall(text)
+    elif intent == "recall":
+        result = recall_topic(text)
         if result:
-            return format_memory_items(result)
-        return say("unknown")
+            response = format_items(result["values"])
+        else:
+            response = say("unknown")
 
-    # built-in commands
-    command_result = run_command(text_clean)
-    if command_result:
-        return command_result
+    elif intent == "system":
+        response = handle_system_command(text_clean)
 
-    # fallback: maybe semantic recall anyway
-    result = recall(text)
-    if result:
-        return format_memory_items(result)
+    elif intent == "command":
+        response = run_command(text_clean) or say("unknown")
 
-    return say("unknown")
+    else:
+        # final semantic attempt
+        result = recall_topic(text)
+        if result:
+            response = format_items(result["values"])
+        else:
+            response = say("unknown")
+
+    log_event("user", user_input)
+    log_event("jarvis", response)
+    return response

@@ -13,8 +13,17 @@ RESPONSE_TEMPLATES = {
     "error": [
         "Something went wrong.",
         "I couldn’t complete that, sir."
+    ],
+    "greeting": [
+        "Hello, sir.",
+        "At your service.",
+        "Good to see you, sir."
+    ],
+    "empty": [
+        "Awaiting your input, sir."
     ]
 }
+
 
 def say(kind: str) -> str:
     return choice(RESPONSE_TEMPLATES.get(kind, ["..."]))

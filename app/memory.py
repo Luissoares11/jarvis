@@ -3,8 +3,13 @@ import re
 from pathlib import Path
 
 from config import MEMORY_FILE
-from .utils import clean_text
-from .semantic import build_embeddings, find_best_match
+from .utils import clean_text, split_csv_values
+from .semantic import (
+    build_topic_embeddings,
+    build_value_embeddings,
+    find_best_topic,
+    find_best_value,
+)
 from .personality import say
 
 
@@ -20,9 +25,18 @@ user_memory = load_memory()
 context = {
     "last_topic": None,
     "last_item": None,
+    "last_intent": None,
+    "history": []
 }
 
-memory_embeddings = build_embeddings(user_memory.keys())
+topic_embeddings = {}
+value_embeddings = []
+
+
+def refresh_embeddings():
+    global topic_embeddings, value_embeddings
+    topic_embeddings = build_topic_embeddings(user_memory)
+    value_embeddings = build_value_embeddings(user_memory)
 
 
 def save_memory():
@@ -30,13 +44,22 @@ def save_memory():
         json.dump(user_memory, f, indent=4, ensure_ascii=False)
 
 
-def refresh_embeddings():
-    global memory_embeddings
-    memory_embeddings = build_embeddings(user_memory.keys())
+def push_history(intent: str, topic=None, item=None, query=None):
+    context["last_intent"] = intent
+    if topic is not None:
+        context["last_topic"] = topic
+    if item is not None:
+        context["last_item"] = item
 
+    context["history"].append({
+        "intent": intent,
+        "topic": topic,
+        "item": item,
+        "query": query,
+    })
 
-def list_memories():
-    return list(user_memory.keys())
+    if len(context["history"]) > 20:
+        context["history"] = context["history"][-20:]
 
 
 def remember(text: str):
@@ -58,42 +81,63 @@ def remember(text: str):
         match = re.search(pattern, text_lower)
         if match:
             key = clean_text(match.group(1))
-            value = match.group(2)
+            raw_value = match.group(2)
 
-            values = [v.strip() for v in value.split(",") if v.strip()]
+            values = split_csv_values(raw_value)
 
             if key not in user_memory:
                 user_memory[key] = []
 
-            for v in values:
-                if v not in user_memory[key]:
-                    user_memory[key].append(v)
-                    context["last_item"] = v
+            for value in values:
+                if value not in user_memory[key]:
+                    user_memory[key].append(value)
 
-            context["last_topic"] = key
             save_memory()
             refresh_embeddings()
+            push_history("remember", topic=key, item=values[-1] if values else None, query=text)
 
             return f"{say('confirm')} I will remember '{key}'."
 
     return say("unknown")
 
 
-def recall(query: str):
+def list_memories():
+    return list(user_memory.keys())
+
+
+def recall_topic(query: str):
     key_clean = clean_text(query)
 
     if key_clean in user_memory:
-        context["last_topic"] = key_clean
-        if user_memory[key_clean]:
-            context["last_item"] = user_memory[key_clean][-1]
-        return user_memory[key_clean]
+        values = user_memory[key_clean]
+        push_history("recall", topic=key_clean, item=values[-1] if values else None, query=query)
+        return {
+            "mode": "topic_exact",
+            "topic": key_clean,
+            "values": values
+        }
 
-    best_key = find_best_match(key_clean, memory_embeddings)
-    if best_key:
-        context["last_topic"] = best_key
-        if user_memory[best_key]:
-            context["last_item"] = user_memory[best_key][-1]
-        return user_memory[best_key]
+    best_topic, topic_score = find_best_topic(key_clean, topic_embeddings)
+    best_value_row, value_score = find_best_value(key_clean, value_embeddings)
+
+    if best_topic and (not best_value_row or topic_score >= value_score):
+        values = user_memory[best_topic]
+        push_history("recall", topic=best_topic, item=values[-1] if values else None, query=query)
+        return {
+            "mode": "topic_semantic",
+            "topic": best_topic,
+            "values": values
+        }
+
+    if best_value_row:
+        topic = best_value_row["topic"]
+        value = best_value_row["value"]
+        push_history("recall", topic=topic, item=value, query=query)
+        return {
+            "mode": "value_semantic",
+            "topic": topic,
+            "values": [value]
+        }
 
     return None
 
@@ -107,33 +151,34 @@ def update_memory(key: str, new_value: str):
 
     if new_value not in user_memory[key]:
         user_memory[key].append(new_value)
-        context["last_item"] = new_value
 
-    context["last_topic"] = key
     save_memory()
     refresh_embeddings()
+    push_history("add", topic=key, item=new_value)
 
     return f"{say('confirm')} Updated '{key}'."
 
 
 def update_last_topic(new_value: str):
-    if not context["last_topic"]:
+    topic = context.get("last_topic")
+    if not topic:
         return say("unknown")
-
-    return update_memory(context["last_topic"], new_value)
+    return update_memory(topic, new_value)
 
 
 def remove_from_last_topic(value: str):
-    if not context["last_topic"]:
+    topic = context.get("last_topic")
+    if not topic:
         return say("unknown")
 
     value = value.strip()
 
-    if value in user_memory[context["last_topic"]]:
-        user_memory[context["last_topic"]].remove(value)
+    if topic in user_memory and value in user_memory[topic]:
+        user_memory[topic].remove(value)
         save_memory()
         refresh_embeddings()
-        return f"{say('confirm')} Removed '{value}' from '{context['last_topic']}'."
+        push_history("remove", topic=topic, item=value)
+        return f"{say('confirm')} Removed '{value}' from '{topic}'."
 
     return "That item isn't stored."
 
@@ -145,6 +190,20 @@ def delete_memory(key: str):
         del user_memory[key]
         save_memory()
         refresh_embeddings()
+        push_history("delete_topic", topic=key)
         return f"{say('confirm')} I forgot '{key}'."
 
     return say("unknown")
+
+
+def system_status():
+    return {
+        "topics": len(user_memory),
+        "items": sum(len(v) for v in user_memory.values()),
+        "last_topic": context.get("last_topic"),
+        "last_item": context.get("last_item"),
+        "last_intent": context.get("last_intent"),
+    }
+
+
+refresh_embeddings()
