@@ -2,3 +2,6 @@ numpy
 scikit-learn
 sentence-transformers
 torch
+fastapi
+uvicorn
+python-dotenv
