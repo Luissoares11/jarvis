@@ -1,0 +1,393 @@
+[2026-03-17 21:33:13] [USER] remember that my name is Luis
+[2026-03-17 21:33:13] [JARVIS] Got it. I will remember 'my name'.
+[2026-03-17 21:33:21] [USER] what do you know
+[2026-03-17 21:33:21] [JARVIS] - the commands i use to build websites
+- my name
+[2026-03-17 21:33:33] [USER] tell me my name
+[2026-03-17 21:33:33] [JARVIS] - luis
+[2026-03-17 21:34:04] [USER] tell me the commands i use to build websites
+[2026-03-17 21:34:04] [JARVIS] - git add .
+- git commit -m ""
+- npm run deploy
+- npm run dev
+- git push
+[2026-03-17 21:34:25] [USER] what command do i use before pushing?
+[2026-03-17 21:34:25] [JARVIS] - git push
+[2026-03-17 21:34:39] [USER] jarvis status
+[2026-03-17 21:34:39] [JARVIS] Topics: 2
+Items: 6
+Last topic: the commands i use to build websites
+Last item: git push
+Last intent: recall
+[2026-03-17 21:34:56] [USER] jarvis memory
+[2026-03-17 21:34:56] [JARVIS] - the commands i use to build websites
+- my name
+[2026-03-17 21:35:01] [USER] hello
+[2026-03-17 21:35:01] [JARVIS] Hello, sir.
+[2026-03-17 21:35:03] [USER] time
+[2026-03-17 21:35:03] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-17 21:53:27] [USER] remember that my favourite tools are vscode, git and python
+[2026-03-17 21:53:27] [JARVIS] Got it. I will remember 'my favourite tools'.
+[2026-03-17 21:53:45] [USER] tell me my favourite tools
+[2026-03-17 21:53:45] [JARVIS] - vscode
+- git and python
+[2026-03-17 21:54:14] [USER] remove second
+[2026-03-17 21:54:14] [JARVIS] Done, sir. Removed 'git and python' from 'my favourite tools'.
+[2026-03-17 21:54:25] [USER] remove vscode
+[2026-03-17 21:54:25] [JARVIS] Consider it handled. Removed 'vscode' from 'my favourite tools'.
+[2026-03-17 21:54:31] [USER] add python
+[2026-03-17 21:54:31] [JARVIS] Got it. Updated 'my favourite tools'.
+[2026-03-17 21:54:36] [USER] remove the first
+[2026-03-17 21:54:36] [JARVIS] Got it. Removed 'python' from 'my favourite tools'.
+[2026-03-17 21:54:45] [USER] tell me my favourite tools
+[2026-03-17 21:54:45] [JARVIS] I don’t know about that, sir.
+[2026-03-17 21:54:59] [USER] what do you know
+[2026-03-17 21:54:59] [JARVIS] - the commands i use to build websites
+- my name
+- my favourite tools
+[2026-03-17 21:55:07] [USER] what are my favourite tooçs
+[2026-03-17 21:55:07] [JARVIS] I don’t know about that, sir.
+[2026-03-17 21:55:10] [USER] what are my favourite tools
+[2026-03-17 21:55:10] [JARVIS] I don’t know about that, sir.
+[2026-03-17 21:55:15] [USER] add vscode
+[2026-03-17 21:55:15] [JARVIS] Done, sir. Updated 'my favourite tools'.
+[2026-03-17 21:55:25] [USER] add python, git
+[2026-03-17 21:55:25] [JARVIS] Got it. Updated 'my favourite tools'.
+[2026-03-17 21:55:28] [USER] what are my favourite tools
+[2026-03-17 21:55:28] [JARVIS] - vscode
+- python git
+[2026-03-17 21:55:46] [USER] remove the second
+[2026-03-17 21:55:46] [JARVIS] Got it. Removed 'python git' from 'my favourite tools'.
+[2026-03-17 22:02:04] [USER] what do you know?
+[2026-03-17 22:02:04] [JARVIS] - the commands i use to build websites
+- my name
+- my favourite tools
+[2026-03-17 22:02:15] [USER] tell me my favoutite toolç
+[2026-03-17 22:02:15] [JARVIS] - vscode
+[2026-03-17 22:02:26] [USER] add git, github
+[2026-03-17 22:02:26] [JARVIS] Consider it handled. Updated 'my favourite tools'.
+[2026-03-17 22:02:30] [USER] tell me my favoutite toolç
+[2026-03-17 22:02:30] [JARVIS] - vscode
+- git github
+[2026-03-17 22:05:57] [USER] hi
+[2026-03-17 22:05:57] [JARVIS] At your service.
+[2026-03-17 22:06:00] [USER] hi
+[2026-03-17 22:06:00] [JARVIS] Good to see you, sir.
+[2026-03-17 22:06:01] [USER] ji
+[2026-03-17 22:06:01] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-17 22:06:01] [USER] ji
+[2026-03-17 22:06:01] [JARVIS] I don’t know about that, sir.
+[2026-03-17 22:06:02] [USER] ji
+[2026-03-17 22:06:02] [JARVIS] I don’t know about that, sir.
+[2026-03-17 22:06:02] [USER] ji
+[2026-03-17 22:06:02] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-17 22:06:03] [USER] hi
+[2026-03-17 22:06:03] [JARVIS] Hello, sir.
+[2026-03-17 22:06:03] [USER] hi
+[2026-03-17 22:06:03] [JARVIS] Good to see you, sir.
+[2026-03-17 22:06:04] [USER] hi
+[2026-03-17 22:06:04] [JARVIS] At your service.
+[2026-03-17 22:06:04] [USER] hi
+[2026-03-17 22:06:04] [JARVIS] Good to see you, sir.
+[2026-03-17 22:06:04] [USER] hi
+[2026-03-17 22:06:04] [JARVIS] At your service.
+[2026-03-17 22:06:05] [USER] hi
+[2026-03-17 22:06:05] [JARVIS] Hello, sir.
+[2026-03-17 22:06:16] [USER] tell me my favourite tools
+[2026-03-17 22:06:16] [JARVIS] - vscode
+- git github
+[2026-03-17 22:06:23] [USER] remove the second
+[2026-03-17 22:06:23] [JARVIS] Done, sir. Removed 'git github' from 'my favourite tools'.
+[2026-03-17 22:06:31] [USER] add git, github
+[2026-03-17 22:06:31] [JARVIS] Done, sir. Updated 'my favourite tools'.
+[2026-03-17 22:06:34] [USER] tell me my favourite tools
+[2026-03-17 22:06:34] [JARVIS] - vscode
+- git
+- github
+[2026-03-17 22:06:49] [USER] and python and C+
+[2026-03-17 22:06:49] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-17 22:06:54] [USER] add python and C+
+[2026-03-17 22:06:54] [JARVIS] Done, sir. Updated 'my favourite tools'.
+[2026-03-17 22:06:57] [USER] tell me my favourite tools
+[2026-03-17 22:06:57] [JARVIS] - vscode
+- git
+- github
+- python and C+
+[2026-03-17 22:12:45] [USER] hello
+[2026-03-17 22:12:45] [JARVIS] Hello, sir.
+[2026-03-17 22:13:00] [USER] tell me my favourite tools
+[2026-03-17 22:13:00] [JARVIS] - vscode
+- git
+- github
+- python and C+
+[2026-03-17 22:13:09] [USER] remothe the forth
+[2026-03-17 22:13:09] [JARVIS] I don’t know about that, sir.
+[2026-03-17 22:13:15] [USER] remove the forth
+[2026-03-17 22:13:15] [JARVIS] Consider it handled. Removed 'vscode' from 'my favourite tools'.
+[2026-03-17 22:13:36] [USER] add git and C
+[2026-03-17 22:13:36] [JARVIS] Consider it handled. Updated 'my favourite tools'.
+[2026-03-17 22:13:39] [USER] tell me my favourite tools
+[2026-03-17 22:13:39] [JARVIS] - git
+- github
+- python and C+
+- C
+[2026-03-17 22:13:55] [USER] remove the third
+[2026-03-17 22:13:55] [JARVIS] Done, sir. Removed 'python and C+' from 'my favourite tools'.
+[2026-03-17 22:13:58] [USER] tell me my favourite tools
+[2026-03-17 22:13:58] [JARVIS] - git
+- github
+- C
+[2026-03-17 22:14:08] [USER] add python
+[2026-03-17 22:14:08] [JARVIS] Got it. Updated 'my favourite tools'.
+[2026-03-17 22:14:14] [USER] remove the forth
+[2026-03-17 22:14:14] [JARVIS] Consider it handled. Removed 'C' from 'my favourite tools'.
+[2026-03-17 22:15:10] [USER] tell me my favourite tools
+[2026-03-17 22:15:10] [JARVIS] - git
+- github
+- python
+[2026-03-17 22:15:15] [USER] add C
+[2026-03-17 22:15:15] [JARVIS] Done, sir. Updated 'my favourite tools'.
+[2026-03-17 22:15:24] [USER] remove the fourth
+[2026-03-17 22:15:24] [JARVIS] Consider it handled. Removed 'C' from 'my favourite tools'.
+[2026-03-17 22:26:45] [USER] hi
+[2026-03-17 22:26:45] [JARVIS] Good to see you, sir.
+[2026-03-17 22:26:57] [USER] tell me my favourite tools
+[2026-03-17 22:26:57] [JARVIS] - git
+- github
+- python
+[2026-03-17 22:27:07] [USER] remove the first 2
+[2026-03-17 22:27:07] [JARVIS] Consider it handled. Removed 2 items from 'my favourite tools'.
+[2026-03-17 22:27:13] [USER] tell me my favourite tools
+[2026-03-17 22:27:13] [JARVIS] - python
+[2026-03-17 22:27:16] [USER] tahnks
+[2026-03-17 22:27:16] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-17 22:27:21] [USER] thanks
+[2026-03-17 22:27:21] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-17 22:28:05] [USER] tell me the commands i use to build websites
+[2026-03-17 22:28:05] [JARVIS] - git add .
+- git commit -m ""
+- npm run deploy
+- npm run dev
+- git push
+[2026-03-17 22:28:28] [USER] replace the last with git hello
+[2026-03-17 22:28:28] [JARVIS] Consider it handled. Replaced 'git push' with 'git hello' in 'the commands i use to build websites'.
+[2026-03-17 22:28:37] [USER] remove it now
+[2026-03-17 22:28:37] [JARVIS] Got it. Removed 'npm run dev' from 'the commands i use to build websites'.
+[2026-03-17 22:32:07] [USER] exity
+[2026-03-17 22:32:07] [JARVIS] I don’t know about that, sir.
+[2026-03-17 22:32:19] [USER] hi
+[2026-03-17 22:32:19] [JARVIS] Hello, sir.
+[2026-03-17 22:32:59] [USER] can you remember that my girlfriend's name is Lara?
+[2026-03-17 22:32:59] [JARVIS] Consider it handled. I will remember 'my girlfriends name'.
+[2026-03-17 22:33:09] [USER] whats my girls name
+[2026-03-17 22:33:09] [JARVIS] - lara?
+[2026-03-17 22:33:25] [USER] remove it
+[2026-03-17 22:33:25] [JARVIS] Done, sir. Removed 'lara?' from 'my girlfriends name'.
+[2026-03-17 22:33:34] [USER] can you remember that my girlfriend's name is Lara?
+[2026-03-17 22:33:34] [JARVIS] Consider it handled. I will remember 'my girlfriends name'.
+[2026-03-17 22:33:38] [USER] whats my girls name
+[2026-03-17 22:33:38] [JARVIS] - lara?
+[2026-03-17 22:40:28] [USER] hi man
+[2026-03-17 22:40:28] [JARVIS] I don’t know about that, sir.
+[2026-03-17 22:41:08] [USER] can you remember that my girlfriend's name is Lara?
+[2026-03-17 22:41:08] [JARVIS] Consider it handled. I will remember 'my girlfriends name'.
+[2026-03-17 22:41:18] [USER] whats my girls name?
+[2026-03-17 22:41:18] [JARVIS] - lara?
+- lara
+[2026-03-17 22:41:25] [USER] remove the first
+[2026-03-17 22:41:25] [JARVIS] Got it. Removed 'lara?' from 'my girlfriends name'.
+[2026-03-17 22:41:51] [USER] rembember that her age is 21
+[2026-03-17 22:41:51] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-17 22:42:15] [USER] remember that my girls age is 21
+[2026-03-17 22:42:15] [JARVIS] Done, sir. I will remember 'my girls age'.
+[2026-03-17 22:42:23] [USER] remove my girls age
+[2026-03-17 22:42:23] [JARVIS] Done, sir. Removed '21' from 'my girls age'.
+[2026-03-17 22:42:32] [USER] what do you know?
+[2026-03-17 22:42:32] [JARVIS] - the commands i use to build websites
+- my name
+- my favourite tools
+- my girlfriends name
+- my girls age
+[2026-03-17 22:42:56] [USER] forget my girls age
+[2026-03-17 22:42:56] [JARVIS] Done, sir. I forgot 'my girls age'.
+[2026-03-17 22:42:59] [USER] what do you know?
+[2026-03-17 22:42:59] [JARVIS] - the commands i use to build websites
+- my name
+- my favourite tools
+- my girlfriends name
+[2026-03-17 22:51:03] [USER] whats my girls name
+[2026-03-17 22:51:03] [JARVIS] - lara
+[2026-03-17 22:51:19] [USER] remember that her age is 21
+[2026-03-17 22:51:19] [JARVIS] Got it. I will remember 'her age'.
+[2026-03-17 22:51:28] [USER] remove my girls age
+[2026-03-17 22:51:28] [JARVIS] Done, sir. I forgot 'my girlfriends name'.
+[2026-03-17 22:51:46] [USER] what do you know
+[2026-03-17 22:51:46] [JARVIS] - the commands i use to build websites
+- my name
+- my favourite tools
+- her age
+[2026-03-17 22:51:54] [USER] whats her age
+[2026-03-17 22:51:54] [JARVIS] - 21
+[2026-03-17 22:51:58] [USER] remove her age
+[2026-03-17 22:51:58] [JARVIS] Consider it handled. I forgot 'her age'.
+[2026-03-17 22:52:13] [USER] forget the first one
+[2026-03-17 22:52:13] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-17 22:52:31] [USER] remove the commands i use to buils websites
+[2026-03-17 22:52:31] [JARVIS] Consider it handled. I forgot 'the commands i use to build websites'.
+[2026-03-17 22:52:47] [USER] what do you know
+[2026-03-17 22:52:47] [JARVIS] - my name
+- my favourite tools
+[2026-03-17 23:29:24] [USER] remember that my girlfriends name is Lara Soares
+[2026-03-17 23:29:24] [JARVIS] Got it. I will remember lara soares.
+[2026-03-17 23:29:37] [USER] remember that Lara Soares is 21
+[2026-03-17 23:29:37] [JARVIS] Got it. I will remember 'lara soares'.
+[2026-03-17 23:30:03] [USER] who is Lara Soares
+[2026-03-17 23:30:03] [JARVIS] lara soares:
+- relationship: girlfriend
+[2026-03-17 23:30:35] [USER] remember that Lara Soares is 21 years old
+[2026-03-17 23:30:35] [JARVIS] Consider it handled. I will remember lara soares's age.
+[2026-03-17 23:30:43] [USER] whats her age
+[2026-03-17 23:30:43] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-17 23:30:51] [USER] whats lara soares age
+[2026-03-17 23:30:51] [JARVIS] - 21
+[2026-03-17 23:31:01] [USER] who is my girlfriend
+[2026-03-17 23:31:01] [JARVIS] lara soares:
+- relationship: girlfriend
+- age: 21
+[2026-03-17 23:31:44] [USER] remember that the commands i use to build websites are git add ., git commit -m "", git push
+[2026-03-17 23:31:44] [JARVIS] Got it. I will remember 'the commands i use to build websites'.
+[2026-03-17 23:31:50] [USER] what do you know
+[2026-03-17 23:31:50] [JARVIS] - my name
+- my favourite tools
+- lara soares
+- the commands i use to build websites
+- lara soares
+[2026-03-17 23:32:05] [USER] remove lara soares
+[2026-03-17 23:32:05] [JARVIS] Done, sir. I forgot 'lara soares'.
+[2026-03-17 23:32:07] [USER] what do you know
+[2026-03-17 23:32:07] [JARVIS] - my name
+- my favourite tools
+- the commands i use to build websites
+- lara soares
+[2026-03-17 23:32:13] [USER] remove lara soares
+[2026-03-17 23:32:13] [JARVIS] That item isn't stored.
+[2026-03-17 23:32:21] [USER] forget lara soares
+[2026-03-17 23:32:21] [JARVIS] Done, sir. I forgot 'lara soares'.
+[2026-03-17 23:32:40] [USER] who am i
+[2026-03-17 23:32:40] [JARVIS] I don’t know about that, sir.
+[2026-03-17 23:32:51] [USER] remeber that i am Luis Soares
+[2026-03-17 23:32:51] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-18 00:10:48] [USER] do you know who Lara is
+[2026-03-18 00:10:48] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-18 00:11:05] [USER] remember that my girlfriends name is Lara
+[2026-03-18 00:11:05] [JARVIS] Consider it handled. I will remember lara.
+[2026-03-18 00:11:15] [USER] remember that my girlfriends name is Lara Soares
+[2026-03-18 00:11:15] [JARVIS] Got it. I will remember lara soares.
+[2026-03-18 00:11:22] [USER] who do you knoi
+[2026-03-18 00:11:22] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:11:24] [USER] who do you know
+[2026-03-18 00:11:24] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:11:29] [USER] what do you know
+[2026-03-18 00:11:29] [JARVIS] - lara
+- lara soares
+- my favourite tools
+- my name
+- the commands i use to build websites
+[2026-03-18 00:11:34] [USER] remove lara
+[2026-03-18 00:11:34] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:11:39] [USER] forget lara
+[2026-03-18 00:11:39] [JARVIS] Consider it handled. I forgot 'lara'.
+[2026-03-18 00:11:47] [USER] who is Lara Soares
+[2026-03-18 00:11:47] [JARVIS] lara soares:
+- relationship: girlfriend
+[2026-03-18 00:11:55] [USER] her age is 21
+[2026-03-18 00:11:55] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:12:06] [USER] Lara Soares age is 21
+[2026-03-18 00:12:06] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-18 00:12:16] [USER] remember that Lara Soares age is 21
+[2026-03-18 00:12:16] [JARVIS] Got it. I will remember lara soare's age.
+[2026-03-18 00:12:34] [USER] forget Lara Soares age
+[2026-03-18 00:12:34] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-18 00:12:45] [USER] remember that Lara Soares is 21
+[2026-03-18 00:12:45] [JARVIS] Consider it handled. I will remember lara soares's age.
+[2026-03-18 00:12:54] [USER] who is Lara Soares
+[2026-03-18 00:12:54] [JARVIS] lara soares:
+- relationship: girlfriend
+- age: 21
+[2026-03-18 00:22:35] [USER] hey
+[2026-03-18 00:22:35] [JARVIS] Good to see you, sir.
+[2026-03-18 00:22:44] [USER] do you know who Lara is
+[2026-03-18 00:22:44] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-18 00:22:50] [USER] who do you know
+[2026-03-18 00:22:50] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:22:54] [USER] what do you know
+[2026-03-18 00:22:54] [JARVIS] - lara soare
+- lara soares
+- my favourite tools
+- my name
+- the commands i use to build websites
+[2026-03-18 00:23:04] [USER] forget Lara soare
+[2026-03-18 00:23:04] [JARVIS] Got it. I forgot 'lara soare'.
+[2026-03-18 00:23:10] [USER] who is Lara Soares
+[2026-03-18 00:23:10] [JARVIS] lara soares:
+- relationship: girlfriend
+- age: 21
+[2026-03-18 00:23:20] [USER] remole Lara age
+[2026-03-18 00:23:20] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-18 00:23:24] [USER] remove Lara age
+[2026-03-18 00:23:24] [JARVIS] That item isn't stored.
+[2026-03-18 00:23:35] [USER] remove Lara Soares age
+[2026-03-18 00:23:35] [JARVIS] That item isn't stored.
+[2026-03-18 00:23:47] [USER] remove Lara Soares relationship
+[2026-03-18 00:23:47] [JARVIS] That item isn't stored.
+[2026-03-18 00:23:56] [USER] forget Lara Soares age
+[2026-03-18 00:23:56] [JARVIS] Done, sir. I forgot lara soares's age.
+[2026-03-18 00:24:16] [USER] Lara Soares age is 21
+[2026-03-18 00:24:16] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-18 00:24:22] [USER] Lara Soares is 21
+[2026-03-18 00:24:22] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:24:32] [USER] she is 21
+[2026-03-18 00:24:32] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:24:45] [USER] Who is Lara Soares
+[2026-03-18 00:24:45] [JARVIS] lara soares:
+- relationship: girlfriend
+[2026-03-18 00:24:50] [USER] her age is 21
+[2026-03-18 00:24:50] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:24:55] [USER] she is 21
+[2026-03-18 00:24:55] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-18 00:28:05] [USER] what do you know
+[2026-03-18 00:28:05] [JARVIS] - lara soares
+- my favourite tools
+- my name
+- the commands i use to build websites
+[2026-03-18 00:28:11] [USER] whats lara soares age
+[2026-03-18 00:28:11] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:28:17] [USER] lara soares age is 21
+[2026-03-18 00:28:17] [JARVIS] Consider it handled. I will remember lara soares's age.
+[2026-03-18 00:28:26] [USER] forget my name
+[2026-03-18 00:28:26] [JARVIS] I couldn't find that information.
+[2026-03-18 00:28:34] [USER] remove my name
+[2026-03-18 00:28:34] [JARVIS] Done, sir. I forgot 'my name'.
+[2026-03-18 00:29:08] [USER] Do you know who am i_
+[2026-03-18 00:29:08] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:29:15] [USER] i am Luis Soares
+[2026-03-18 00:29:15] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:29:25] [USER] My name is Luis Soares
+[2026-03-18 00:29:25] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-18 00:29:40] [USER] Remember that i am Luis Soares
+[2026-03-18 00:29:40] [JARVIS] Done, sir. I will remember your name.
+[2026-03-18 00:29:50] [USER] What do you knoe_
+[2026-03-18 00:29:50] [JARVIS] I don’t know about that, sir.
+[2026-03-18 00:30:00] [USER] What do you know?
+[2026-03-18 00:30:00] [JARVIS] - lara soares
+- my favourite tools
+- my name
+- the commands i use to build websites
+[2026-03-18 00:30:07] [USER] whats my name
+[2026-03-18 00:30:07] [JARVIS] - luis soares
+[2026-03-18 00:30:15] [USER] forget my name
+[2026-03-18 00:30:15] [JARVIS] I couldn't find that information.
+[2026-03-18 00:30:20] [USER] remove my name
+[2026-03-18 00:30:20] [JARVIS] Done, sir. I forgot 'my name'.
+[2026-03-18 00:31:03] [USER] remember that the devices i use are, iphone 11 pro max, a pc and a desktop
+[2026-03-18 00:31:03] [JARVIS] I don’t know about that, sir.

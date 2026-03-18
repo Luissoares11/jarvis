@@ -16,8 +16,7 @@ def detect_intent(text: str) -> str:
     ]):
         return "list_memories"
 
-    # typo-tolerant remember
-    if "remember" in text or "rembember" in text or "remeber" in text:
+    if any(word in text for word in ["remember", "rembember", "remeber"]):
         return "remember"
 
     if text.startswith("replace "):
@@ -50,7 +49,6 @@ def detect_intent(text: str) -> str:
     if text.startswith("git ") or text.startswith("npm "):
         return "command"
 
-    # more flexible greetings
     if any(greet in text for greet in ["hello", "hi", "hey"]):
         return "greeting"
 

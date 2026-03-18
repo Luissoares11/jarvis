@@ -6,6 +6,7 @@ from .logger import log_event
 from .memory import (
     remember,
     recall_topic,
+    recall_profile,
     update_memory,
     update_last_topic,
     remove_from_last_topic,
@@ -15,6 +16,8 @@ from .memory import (
     get_item_from_last_topic,
     replace_in_last_topic,
     move_in_last_topic,
+    delete_profile_field,
+    infer_profile_update,
 )
 from .personality import say
 from .utils import clean_text
@@ -26,15 +29,37 @@ def format_items(items):
     return "\n".join(f"- {item}" for item in items)
 
 
+def format_profile(profile_result):
+    if profile_result["type"] == "profile_name":
+        return f"- {profile_result['name']}"
+
+    if profile_result["type"] == "profile":
+        lines = [f"{profile_result['name']}:"]
+        for key, value in profile_result["fields"].items():
+            lines.append(f"- {key}: {value}")
+        return "\n".join(lines)
+
+    if profile_result["type"] == "ambiguous_profile":
+        lines = ["I know more than one match:"]
+        for match in profile_result["matches"]:
+            lines.append(f"- {match}")
+        return "\n".join(lines)
+
+    return say("unknown")
+
+
 def handle_system_command(text_clean: str):
     if text_clean == "jarvis status":
         status = system_status()
         return (
             f"Topics: {status['topics']}\n"
+            f"Profiles: {status['profiles']}\n"
+            f"Aliases: {status['aliases']}\n"
             f"Items: {status['items']}\n"
             f"Last topic: {status['last_topic']}\n"
             f"Last item: {status['last_item']}\n"
-            f"Last intent: {status['last_intent']}"
+            f"Last intent: {status['last_intent']}\n"
+            f"Last profile: {status['last_profile']}"
         )
 
     if text_clean == "jarvis memory":
@@ -69,22 +94,47 @@ def process_input(user_input: str):
         response = "\n".join(f"- {m}" for m in memories) if memories else "I don't know anything yet, sir."
 
     elif intent == "delete_topic":
-        match = re.search(r"(?:forget|delete) (.+)", text_clean)
-        response = delete_memory(match.group(1)) if match else say("unknown")
+        match_field = re.search(
+            r"(?:forget|delete) (.+?) (age|name|relationship)",
+            text,
+            re.IGNORECASE
+        )
+
+        if match_field:
+            name = match_field.group(1)
+            field = match_field.group(2)
+
+            result = delete_profile_field(name, field)
+
+            if result:
+                response = f"{say('confirm')} I forgot {result}'s {field}."
+            else:
+                response = "I couldn't find that information."
+
+        else:
+            match = re.search(r"(?:forget|delete) (.+)", text, re.IGNORECASE)
+            response = delete_memory(match.group(1)) if match else say("unknown")
 
     elif intent == "remove_item":
         match = re.search(r"(?:remove|delete item) (.+)", text, re.IGNORECASE)
         if match:
             target = match.group(1).strip()
 
-            # if target looks like a topic, delete the topic
-            topic_result = recall_topic(target)
-            if topic_result and topic_result["mode"] in ["topic_exact", "topic_fuzzy", "topic_semantic"]:
-                response = delete_memory(topic_result["topic"])
+            profile_result = recall_profile(target)
+            if profile_result and profile_result["type"] in ["profile", "profile_name"]:
+                if profile_result["type"] == "profile_name":
+                    response = delete_memory(profile_result["name"])
+                else:
+                    response = delete_memory(profile_result["name"])
             else:
-                response = remove_from_last_topic(target)
+                topic_result = recall_topic(target)
+                if topic_result and topic_result["mode"] in ["topic_exact", "topic_fuzzy", "topic_semantic"]:
+                    response = delete_memory(topic_result["topic"])
+                else:
+                    response = remove_from_last_topic(target)
         else:
             response = say("unknown")
+
     elif intent == "replace_item":
         match = re.search(r"replace (.+?) with (.+)", text, re.IGNORECASE)
         response = replace_in_last_topic(match.group(1), match.group(2)) if match else say("unknown")
@@ -109,17 +159,29 @@ def process_input(user_input: str):
                 response = say("unknown")
 
     elif intent == "recall":
-        # direct positional query, e.g. "what is the second command"
-        match = re.search(r"what is (.+)", text, re.IGNORECASE)
-        if match and any(word in text_clean for word in ["first", "second", "third", "fourth", "forth", "fifth", "last"]):
-            item, error = get_item_from_last_topic(match.group(1))
-            response = item if not error else error
-        else:
-            result = recall_topic(text)
+        if text_clean in ["who am i", "whats my name", "what is my name"]:
+            result = recall_topic("my name")
             if result:
                 response = format_items(result["values"])
             else:
                 response = say("unknown")
+        else:
+            profile_result = recall_profile(text)
+            if profile_result:
+                response = format_profile(profile_result)
+            else:
+                match = re.search(r"what is (.+)", text, re.IGNORECASE)
+                if match and any(word in text_clean for word in [
+                    "first", "second", "third", "fourth", "forth", "fifth", "last"
+                ]):
+                    item, error = get_item_from_last_topic(match.group(1))
+                    response = item if not error else error
+                else:
+                    result = recall_topic(text)
+                    if result:
+                        response = format_items(result["values"])
+                    else:
+                        response = say("unknown")
 
     elif intent == "system":
         response = handle_system_command(text_clean)
@@ -128,11 +190,19 @@ def process_input(user_input: str):
         response = run_command(text_clean) or say("unknown")
 
     else:
-        result = recall_topic(text)
-        if result:
-            response = format_items(result["values"])
+        inferred = infer_profile_update(text)
+        if inferred:
+            response = inferred
         else:
-            response = say("unknown")
+            profile_result = recall_profile(text)
+            if profile_result:
+                response = format_profile(profile_result)
+            else:
+                result = recall_topic(text)
+                if result:
+                    response = format_items(result["values"])
+                else:
+                    response = say("unknown")
 
     log_event("user", user_input)
     log_event("jarvis", response)

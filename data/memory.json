@@ -1,8 +1,23 @@
 {
-    "my name": [
-        "luis"
-    ],
-    "my favourite tools": [
-        "python"
-    ]
+    "topics": {
+        "my favourite tools": [
+            "python"
+        ],
+        "the commands i use to build websites": [
+            "git add",
+            "git commit -m \"\"",
+            "git push"
+        ]
+    },
+    "profiles": {
+        "lara soares": {
+            "relationship": "girlfriend",
+            "age": "21"
+        }
+    },
+    "aliases": {
+        "my girlfriend": "lara soares",
+        "my girl": "lara soares",
+        "gf": "lara soares"
+    }
 }

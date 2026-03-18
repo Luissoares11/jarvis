@@ -4,7 +4,6 @@ from pathlib import Path
 
 from config import MEMORY_FILE
 from .utils import clean_text, clean_value, split_values
-
 from .semantic import (
     build_topic_embeddings,
     build_value_embeddings,
@@ -17,13 +16,93 @@ from .personality import say
 def load_memory():
     if Path(MEMORY_FILE).exists():
         with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+            data = json.load(f)
+
+            if "topics" not in data:
+                return {
+                    "topics": data,
+                    "profiles": {},
+                    "aliases": {},
+                }
+
+            if "profiles" not in data:
+                data["profiles"] = {}
+
+            if "aliases" not in data:
+                data["aliases"] = {}
+
+            return data
+
+    return {
+        "topics": {},
+        "profiles": {},
+        "aliases": {},
+    }
+
+
+memory_store = load_memory()
+user_memory = memory_store["topics"]
+profile_memory = memory_store["profiles"]
+alias_memory = memory_store["aliases"]
+
+
+def save_memory():
+    with open(MEMORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "topics": user_memory,
+                "profiles": profile_memory,
+                "aliases": alias_memory,
+            },
+            f,
+            indent=4,
+            ensure_ascii=False,
+        )
+
+
+context = {
+    "last_topic": None,
+    "last_item": None,
+    "last_intent": None,
+    "last_profile": None,
+    "history": [],
+}
+
+
+def push_history(intent: str, topic=None, item=None, query=None, profile=None):
+    context["last_intent"] = intent
+    if topic is not None:
+        context["last_topic"] = topic
+    if item is not None:
+        context["last_item"] = item
+    if profile is not None:
+        context["last_profile"] = profile
+
+    context["history"].append(
+        {
+            "intent": intent,
+            "topic": topic,
+            "item": item,
+            "query": query,
+            "profile": profile,
+        }
+    )
+
+    if len(context["history"]) > 20:
+        context["history"] = context["history"][-20:]
+
+
+topic_embeddings = {}
+value_embeddings = []
+
+
+def refresh_embeddings():
+    global topic_embeddings, value_embeddings
+    topic_embeddings = build_topic_embeddings(user_memory)
+    value_embeddings = build_value_embeddings(user_memory)
+
 
 def normalize_existing_memory():
-    """
-    One-time cleanup for old stored values like 'lara?'.
-    """
     changed = False
 
     for topic, values in user_memory.items():
@@ -37,68 +116,484 @@ def normalize_existing_memory():
             user_memory[topic] = cleaned
             changed = True
 
+    fixed_aliases = {}
+    for alias, target in alias_memory.items():
+        fixed_aliases[clean_text(alias)] = clean_text(target)
+
+    if fixed_aliases != alias_memory:
+        alias_memory.clear()
+        alias_memory.update(fixed_aliases)
+        changed = True
+
+    fixed_profiles = {}
+    for name, fields in profile_memory.items():
+        canon = clean_text(name)
+        fixed_profiles.setdefault(canon, {})
+        for field, value in fields.items():
+            fixed_profiles[canon][clean_text(field)] = clean_value(str(value))
+
+    if fixed_profiles != profile_memory:
+        profile_memory.clear()
+        profile_memory.update(fixed_profiles)
+        changed = True
+
     if changed:
         save_memory()
-        refresh_embeddings()
-
-user_memory = load_memory()
-
-context = {
-    "last_topic": None,
-    "last_item": None,
-    "last_intent": None,
-    "history": []
-}
-
-topic_embeddings = {}
-value_embeddings = []
-
-def resolve_pronoun(value: str):
-    """
-    Resolve 'it', 'that', 'this' to the last referenced item.
-    """
-    value_clean = clean_text(value)
-
-    if value_clean in ["it", "that", "this"]:
-        if context.get("last_item"):
-            return context["last_item"]
-
-    return value
-
-def refresh_embeddings():
-    global topic_embeddings, value_embeddings
-    topic_embeddings = build_topic_embeddings(user_memory)
-    value_embeddings = build_value_embeddings(user_memory)
 
 
-def save_memory():
-    with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(user_memory, f, indent=4, ensure_ascii=False)
+def ensure_profile(name: str):
+    canonical = clean_text(name)
+    if canonical not in profile_memory:
+        profile_memory[canonical] = {}
+    return canonical
+
+def infer_profile_update(text: str):
+    t = text.strip()
+    lowered = t.lower()
+
+    patterns = [
+        (r"(.+?) is (\d+)$", "name_age"),
+        (r"(he|she) is (\d+)$", "pronoun_age"),
+        (r"(.+?) age is (\d+)", "name_age_alt"),
+    ]
+
+    for pattern, mode in patterns:
+        match = re.search(pattern, lowered)
+        if not match:
+            continue
+
+        # 👉 NAME: "lara soares is 21"
+        if mode == "name_age":
+            name = clean_value(match.group(1))
+            age = clean_value(match.group(2))
+
+            resolved = resolve_profile_reference(name)
+
+            if resolved["status"] == "ok":
+                canonical = resolved["name"]
+                set_profile_field(canonical, "age", age)
+
+                push_history("infer_profile", profile=canonical)
+
+                return f"{say('confirm')} I will remember {canonical}'s age."
+
+        # 👉 PRONOUN: "she is 21"
+        if mode == "pronoun_age":
+            age = clean_value(match.group(2))
+
+            if context.get("last_profile"):
+                canonical = context["last_profile"]
+
+                set_profile_field(canonical, "age", age)
+
+                push_history("infer_profile", profile=canonical)
+
+                return f"{say('confirm')} I will remember {canonical}'s age."
+
+        # 👉 ALT: "lara age is 21"
+        if mode == "name_age_alt":
+            name = clean_value(match.group(1))
+            age = clean_value(match.group(2))
+
+            resolved = resolve_profile_reference(name)
+
+            if resolved["status"] == "ok":
+                canonical = resolved["name"]
+
+                set_profile_field(canonical, "age", age)
+
+                push_history("infer_profile", profile=canonical)
+
+                return f"{say('confirm')} I will remember {canonical}'s age."
+
+    return None
+
+def set_profile_field(name: str, field: str, value: str):
+    canonical = ensure_profile(name)
+    profile_memory[canonical][clean_text(field)] = clean_value(value)
+    save_memory()
+    return canonical
+
+def delete_profile_field(name: str, field: str):
+    resolved = resolve_profile_reference(name)
+
+    if resolved["status"] != "ok":
+        return None
+
+    canonical = resolved["name"]
+
+    if canonical not in profile_memory:
+        return None
+
+    field_clean = clean_text(field)
+
+    if field_clean in profile_memory[canonical]:
+        del profile_memory[canonical][field_clean]
+
+        # if profile becomes empty → remove it entirely
+        if not profile_memory[canonical]:
+            del profile_memory[canonical]
+
+            # also clean aliases
+            to_delete = [a for a, target in alias_memory.items() if target == canonical]
+            for alias in to_delete:
+                del alias_memory[alias]
+
+        save_memory()
+
+        push_history("delete_profile_field", profile=canonical)
+
+        return canonical
+
+    return None
+
+def add_alias(alias: str, canonical_name: str):
+    alias = clean_text(alias)
+    canonical_name = clean_text(canonical_name)
+
+    alias_memory[alias] = canonical_name
+    save_memory()
 
 
-def push_history(intent: str, topic=None, item=None, query=None):
-    context["last_intent"] = intent
-    if topic is not None:
-        context["last_topic"] = topic
-    if item is not None:
-        context["last_item"] = item
+def get_profile(canonical_name: str):
+    return profile_memory.get(clean_text(canonical_name))
 
-    context["history"].append({
-        "intent": intent,
-        "topic": topic,
-        "item": item,
-        "query": query,
-    })
 
-    if len(context["history"]) > 20:
-        context["history"] = context["history"][-20:]
+def list_profiles():
+    return list(profile_memory.keys())
+
+
+def resolve_profile_reference(ref: str):
+    ref_clean = clean_text(ref)
+
+    if ref_clean in profile_memory:
+        return {"status": "ok", "name": ref_clean}
+
+    if ref_clean in alias_memory:
+        target = alias_memory[ref_clean]
+        if target in profile_memory:
+            return {"status": "ok", "name": target}
+
+    matches = []
+    for name in profile_memory.keys():
+        if ref_clean == name:
+            matches.append(name)
+        else:
+            parts = name.split()
+            if ref_clean in parts:
+                matches.append(name)
+
+    matches = sorted(set(matches))
+
+    if len(matches) == 1:
+        return {"status": "ok", "name": matches[0]}
+
+    if len(matches) > 1:
+        return {"status": "ambiguous", "matches": matches}
+
+    return {"status": "missing"}
+
+
+def resolve_profile_pronoun(ref: str):
+    ref_clean = clean_text(ref)
+    if ref_clean in ["her", "his", "their", "them"]:
+        if context.get("last_profile"):
+            return {"status": "ok", "name": context["last_profile"]}
+    return resolve_profile_reference(ref)
+
+
+def remember_profile(text: str):
+    t = text.strip()
+    lowered = t.lower()
+
+    patterns = [
+        # 🔥 NEW: pronoun-based memory
+        (r"(her|his|their) age is (.+)", "pronoun_age"),
+
+        (r"remember that my (.+?)s name is (.+)", "relation_name"),
+        (r"remember that (.+?) is my (.+)", "name_relation"),
+        (r"remember that (.+?) is (\d+)\s+years old", "name_age_sentence"),
+        (r"remember that (.+?)s age is (.+)", "name_age_possessive"),
+        (r"remember that my (.+?)s age is (.+)", "relation_age"),
+        (r"remember that (.+?) is (\d+)$", "name_age_short"),
+    ]
+
+    for pattern, mode in patterns:
+        match = re.search(pattern, lowered)
+        if not match:
+            continue
+
+        # 🔥 NEW: pronoun handler
+        if mode == "pronoun_age":
+            age = clean_value(match.group(2))
+
+            if context.get("last_profile"):
+                canonical = context["last_profile"]
+                set_profile_field(canonical, "age", age)
+
+                push_history("remember_profile", profile=canonical, query=text)
+
+                return f"{say('confirm')} I will remember {canonical}'s age."
+
+            return "I don't know who you're referring to."
+
+        if mode == "relation_name":
+            relation = clean_text(match.group(1))
+            name = clean_value(match.group(2))
+            canonical = ensure_profile(name)
+
+            set_profile_field(canonical, "relationship", relation)
+
+            add_alias(f"my {relation}", canonical)
+
+            if relation == "girlfriend":
+                add_alias("my girl", canonical)
+                add_alias("gf", canonical)
+
+            # 🔥 IMPORTANT: also link simple name alias
+            add_alias(name.split()[0], canonical)
+
+            push_history("remember_profile", profile=canonical, query=text)
+            return f"{say('confirm')} I will remember {canonical}."
+
+        if mode == "name_relation":
+            name = clean_value(match.group(1))
+            relation = clean_text(match.group(2))
+            canonical = ensure_profile(name)
+
+            set_profile_field(canonical, "relationship", relation)
+
+            add_alias(f"my {relation}", canonical)
+
+            if relation == "girlfriend":
+                add_alias("my girl", canonical)
+                add_alias("gf", canonical)
+
+            add_alias(name.split()[0], canonical)
+
+            push_history("remember_profile", profile=canonical, query=text)
+            return f"{say('confirm')} I will remember {canonical}."
+
+        if mode == "name_age_sentence":
+            name = clean_value(match.group(1))
+            age = clean_value(match.group(2))
+            canonical = ensure_profile(name)
+
+            set_profile_field(canonical, "age", age)
+
+            add_alias(name.split()[0], canonical)
+
+            push_history("remember_profile", profile=canonical, query=text)
+            return f"{say('confirm')} I will remember {canonical}'s age."
+
+        if mode == "name_age_possessive":
+            name = clean_value(match.group(1))
+            age = clean_value(match.group(2))
+            canonical = ensure_profile(name)
+
+            set_profile_field(canonical, "age", age)
+
+            add_alias(name.split()[0], canonical)
+
+            push_history("remember_profile", profile=canonical, query=text)
+            return f"{say('confirm')} I will remember {canonical}'s age."
+
+        if mode == "relation_age":
+            relation = clean_text(match.group(1))
+            age = clean_value(match.group(2))
+
+            resolved = resolve_profile_reference(f"my {relation}")
+
+            if resolved["status"] == "ok":
+                canonical = resolved["name"]
+
+                set_profile_field(canonical, "age", age)
+
+                push_history("remember_profile", profile=canonical, query=text)
+
+                return f"{say('confirm')} I will remember {canonical}'s age."
+
+            return "I don't know who that refers to yet."
+
+        if mode == "name_age_short":
+            name = clean_value(match.group(1))
+            age = clean_value(match.group(2))
+            canonical = ensure_profile(name)
+
+            set_profile_field(canonical, "age", age)
+
+            add_alias(name.split()[0], canonical)
+
+            push_history("remember_profile", profile=canonical, query=text)
+            return f"{say('confirm')} I will remember {canonical}'s age."
+
+    return None
+    t = text.strip()
+    lowered = t.lower()
+
+    patterns = [
+        (r"remember that my (.+?)s name is (.+)", "relation_name"),
+        (r"remember that (.+?) is my (.+)", "name_relation"),
+        (r"remember that (.+?) is (\d+)\s+years old", "name_age_sentence"),
+        (r"remember that (.+?)s age is (.+)", "name_age_possessive"),
+        (r"remember that my (.+?)s age is (.+)", "relation_age"),
+        (r"remember that (.+?) is (\d+)$", "name_age_short"),
+    ]
+
+    for pattern, mode in patterns:
+        match = re.search(pattern, lowered)
+        if not match:
+            continue
+
+        if mode == "relation_name":
+            relation = clean_text(match.group(1))
+            name = clean_value(match.group(2))
+            canonical = ensure_profile(name)
+            set_profile_field(canonical, "relationship", relation)
+
+            add_alias(f"my {relation}", canonical)
+            if relation == "girlfriend":
+                add_alias("my girl", canonical)
+                add_alias("gf", canonical)
+
+            push_history("remember_profile", profile=canonical, query=text)
+            return f"{say('confirm')} I will remember {canonical}."
+
+        if mode == "name_relation":
+            name = clean_value(match.group(1))
+            relation = clean_text(match.group(2))
+            canonical = ensure_profile(name)
+            set_profile_field(canonical, "relationship", relation)
+
+            add_alias(f"my {relation}", canonical)
+            if relation == "girlfriend":
+                add_alias("my girl", canonical)
+                add_alias("gf", canonical)
+
+            push_history("remember_profile", profile=canonical, query=text)
+            return f"{say('confirm')} I will remember {canonical}."
+
+        if mode == "name_age_sentence":
+            name = clean_value(match.group(1))
+            age = clean_value(match.group(2))
+            canonical = ensure_profile(name)
+            set_profile_field(canonical, "age", age)
+            push_history("remember_profile", profile=canonical, query=text)
+            return f"{say('confirm')} I will remember {canonical}'s age."
+
+        if mode == "name_age_possessive":
+            name = clean_value(match.group(1))
+            age = clean_value(match.group(2))
+            canonical = ensure_profile(name)
+            set_profile_field(canonical, "age", age)
+            push_history("remember_profile", profile=canonical, query=text)
+            return f"{say('confirm')} I will remember {canonical}'s age."
+
+        if mode == "relation_age":
+            relation = clean_text(match.group(1))
+            age = clean_value(match.group(2))
+            resolved = resolve_profile_reference(f"my {relation}")
+            if resolved["status"] == "ok":
+                canonical = resolved["name"]
+                set_profile_field(canonical, "age", age)
+                push_history("remember_profile", profile=canonical, query=text)
+                return f"{say('confirm')} I will remember {canonical}'s age."
+            return "I don't know who that refers to yet."
+
+        if mode == "name_age_short":
+            name = clean_value(match.group(1))
+            age = clean_value(match.group(2))
+            canonical = ensure_profile(name)
+            set_profile_field(canonical, "age", age)
+            push_history("remember_profile", profile=canonical, query=text)
+            return f"{say('confirm')} I will remember {canonical}'s age."
+
+    return None
+
+
+def recall_profile(query: str):
+    q = clean_text(query)
+
+    patterns = [
+        (r"(?:what do you know about|tell me about|who is) (.+)", "full_profile"),
+        (r"what is (.+?)s age", "field_age"),
+        (r"whats (.+?)s age", "field_age"),
+        (r"how old is (.+)", "field_age"),
+        (r"what is (.+?) age", "field_age"),
+        (r"whats (.+?) age", "field_age"),
+        (r"what is (.+?)s name", "field_name"),
+        (r"whats (.+?)s name", "field_name"),
+    ]
+
+    for pattern, mode in patterns:
+        match = re.search(pattern, q)
+        if not match:
+            continue
+
+        ref = match.group(1)
+        resolved = resolve_profile_pronoun(ref)
+
+        if resolved["status"] == "ambiguous":
+            return {
+                "type": "ambiguous_profile",
+                "matches": resolved["matches"],
+            }
+
+        if resolved["status"] != "ok":
+            return None
+
+        canonical = resolved["name"]
+        profile = profile_memory[canonical]
+
+        push_history("recall_profile", profile=canonical, query=query)
+
+        if mode == "full_profile":
+            return {
+                "type": "profile",
+                "name": canonical,
+                "fields": profile,
+            }
+
+        if mode == "field_age":
+            if "age" in profile:
+                return {
+                    "type": "profile",
+                    "name": canonical,
+                    "fields": {"age": profile["age"]},
+                }
+
+        if mode == "field_name":
+            return {
+                "type": "profile_name",
+                "name": canonical,
+            }
+
+    return None
 
 
 def list_memories():
-    return list(user_memory.keys())
+    all_items = list(user_memory.keys()) + list(profile_memory.keys())
+    return sorted(set(all_items))
 
 
 def remember(text: str):
+    self_match = re.search(r"remember that i am (.+)", text.lower())
+    if self_match:
+        name = clean_value(self_match.group(1))
+        if "my name" not in user_memory:
+            user_memory["my name"] = []
+        if name not in user_memory["my name"]:
+            user_memory["my name"].append(name)
+
+        save_memory()
+        refresh_embeddings()
+        push_history("remember", topic="my name", item=name, query=text)
+        return f"{say('confirm')} I will remember your name."
+
+    profile_result = remember_profile(text)
+    if profile_result:
+        return profile_result
+
     patterns = [
         r"remember that (.+?) is (.+)",
         r"remember that (.+?) are (.+)",
@@ -146,7 +641,7 @@ def recall_topic(query: str):
         return {
             "mode": "topic_exact",
             "topic": key_clean,
-            "values": values
+            "values": values,
         }
 
     from difflib import get_close_matches
@@ -158,7 +653,7 @@ def recall_topic(query: str):
         return {
             "mode": "topic_fuzzy",
             "topic": topic,
-            "values": values
+            "values": values,
         }
 
     best_topic, topic_score = find_best_topic(key_clean, topic_embeddings)
@@ -170,7 +665,7 @@ def recall_topic(query: str):
         return {
             "mode": "topic_semantic",
             "topic": best_topic,
-            "values": values
+            "values": values,
         }
 
     if best_value_row:
@@ -180,7 +675,7 @@ def recall_topic(query: str):
         return {
             "mode": "value_semantic",
             "topic": topic,
-            "values": [value]
+            "values": [value],
         }
 
     return None
@@ -221,46 +716,16 @@ def _ordinal_to_index(text: str):
     text = clean_text(text)
 
     mapping = {
-        "first": 0,
-        "1st": 0,
-        "one": 0,
-
-        "second": 1,
-        "2nd": 1,
-        "two": 1,
-
-        "third": 2,
-        "3rd": 2,
-        "three": 2,
-
-        "fourth": 3,
-        "forth": 3,
-        "4th": 3,
-        "four": 3,
-
-        "fifth": 4,
-        "5th": 4,
-        "five": 4,
-
-        "sixth": 5,
-        "6th": 5,
-        "six": 5,
-
-        "seventh": 6,
-        "7th": 6,
-        "seven": 6,
-
-        "eighth": 7,
-        "8th": 7,
-        "eight": 7,
-
-        "ninth": 8,
-        "9th": 8,
-        "nine": 8,
-
-        "tenth": 9,
-        "10th": 9,
-        "ten": 9,
+        "first": 0, "1st": 0, "one": 0,
+        "second": 1, "2nd": 1, "two": 1,
+        "third": 2, "3rd": 2, "three": 2,
+        "fourth": 3, "forth": 3, "4th": 3, "four": 3,
+        "fifth": 4, "5th": 4, "five": 4,
+        "sixth": 5, "6th": 5, "six": 5,
+        "seventh": 6, "7th": 6, "seven": 6,
+        "eighth": 7, "8th": 7, "eight": 7,
+        "ninth": 8, "9th": 8, "nine": 8,
+        "tenth": 9, "10th": 9, "ten": 9,
     }
 
     for word, idx in mapping.items():
@@ -276,33 +741,12 @@ def _ordinal_to_index(text: str):
     return None
 
 
-def _looks_like_position_request(text: str) -> bool:
-    text = clean_text(text)
-
-    keywords = [
-        "first", "second", "third", "fourth", "forth", "fifth",
-        "sixth", "seventh", "eighth", "ninth", "tenth",
-        "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th",
-        "last", "position", "number"
-    ]
-
-    return any(re.search(rf"\b{re.escape(k)}\b", text) for k in keywords)
-
-
 def _quantity_from_text(text: str):
     text = clean_text(text)
 
     mapping = {
-        "one": 1,
-        "two": 2,
-        "three": 3,
-        "four": 4,
-        "five": 5,
-        "six": 6,
-        "seven": 7,
-        "eight": 8,
-        "nine": 9,
-        "ten": 10,
+        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
     }
 
     for word, qty in mapping.items():
@@ -314,6 +758,19 @@ def _quantity_from_text(text: str):
         return int(match.group(1))
 
     return 1
+
+
+def _looks_like_position_request(text: str) -> bool:
+    text = clean_text(text)
+
+    keywords = [
+        "first", "second", "third", "fourth", "forth", "fifth",
+        "sixth", "seventh", "eighth", "ninth", "tenth",
+        "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th",
+        "last", "position", "number"
+    ]
+
+    return any(re.search(rf"\b{re.escape(k)}\b", text) for k in keywords)
 
 
 def _remove_by_index(topic: str, idx: int):
@@ -352,7 +809,6 @@ def _remove_semantic_from_topic(topic: str, query: str):
     topic_values = user_memory[topic]
     q = clean_text(query)
 
-    # partial direct fallback first
     for value in topic_values:
         if q in clean_text(value) or clean_text(value) in q:
             user_memory[topic].remove(value)
@@ -361,7 +817,6 @@ def _remove_semantic_from_topic(topic: str, query: str):
             push_history("remove", topic=topic, item=value)
             return value
 
-    # semantic fallback
     best_row, best_score = find_best_value(f"{topic} :: {query}", value_embeddings, threshold=0.0)
     if best_row and best_row["topic"] == topic and best_score >= 0.45:
         value = best_row["value"]
@@ -373,6 +828,14 @@ def _remove_semantic_from_topic(topic: str, query: str):
             return value
 
     return None
+
+
+def resolve_pronoun(value: str):
+    value_clean = clean_text(value)
+    if value_clean in ["it", "that", "this"]:
+        if context.get("last_item"):
+            return context["last_item"]
+    return value
 
 
 def remove_from_last_topic(value: str):
@@ -402,7 +865,6 @@ def remove_from_last_topic(value: str):
             return f"{say('confirm')} Removed '{removed[0]}' from '{topic}'."
         return f"{say('confirm')} Removed {len(removed)} items from '{topic}'."
 
-    # remove first two / first three / etc.
     if re.search(r"\bfirst\b", value_clean):
         qty = _quantity_from_text(value_clean)
         if topic not in user_memory or not user_memory[topic]:
@@ -461,7 +923,6 @@ def get_item_from_last_topic(selector: str):
             return values[idx], None
         return None, "That position does not exist."
 
-    # semantic fallback
     q = clean_text(selector)
     for value in values:
         if q in clean_text(value) or clean_text(value) in q:
@@ -485,7 +946,6 @@ def replace_in_last_topic(selector: str, new_value: str):
 
     idx = user_memory[topic].index(old_value)
     new_value = clean_value(new_value)
-
     user_memory[topic][idx] = new_value
 
     save_memory()
@@ -521,7 +981,6 @@ def move_in_last_topic(selector: str, destination: str):
     else:
         idx = _ordinal_to_index(dest_clean)
         if idx is None:
-            # restore
             values.insert(current_idx, item)
             return "I couldn't identify where to move it."
         if idx < 0:
@@ -536,25 +995,48 @@ def move_in_last_topic(selector: str, destination: str):
 
     return f"{say('confirm')} Moved '{item}' in '{topic}'."
 
-def delete_memory(key: str):
-    key = clean_text(key)
 
-    if key in user_memory:
-        del user_memory[key]
+def delete_memory(key: str):
+    key_clean = clean_text(key)
+    deleted_any = False
+    deleted_name = key_clean
+
+    if key_clean in user_memory:
+        del user_memory[key_clean]
+        deleted_any = True
+
+    resolved = resolve_profile_reference(key_clean)
+    if resolved["status"] == "ok":
+        canonical = resolved["name"]
+        deleted_name = canonical
+
+        if canonical in profile_memory:
+            del profile_memory[canonical]
+            deleted_any = True
+
+        to_delete = [a for a, target in alias_memory.items() if target == canonical]
+        for alias in to_delete:
+            del alias_memory[alias]
+
+    if deleted_any:
         save_memory()
         refresh_embeddings()
-        push_history("delete_topic", topic=key)
-        return f"{say('confirm')} I forgot '{key}'."
+        push_history("delete_memory", topic=key_clean, profile=deleted_name)
+        return f"{say('confirm')} I forgot '{deleted_name}'."
 
     return say("unknown")
+
 
 def system_status():
     return {
         "topics": len(user_memory),
+        "profiles": len(profile_memory),
+        "aliases": len(alias_memory),
         "items": sum(len(v) for v in user_memory.values()),
         "last_topic": context.get("last_topic"),
         "last_item": context.get("last_item"),
         "last_intent": context.get("last_intent"),
+        "last_profile": context.get("last_profile"),
     }
 
 

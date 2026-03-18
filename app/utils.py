@@ -12,6 +12,10 @@ def clean_text(text: str) -> str:
 
 
 def clean_value(text: str) -> str:
+    """
+    Clean values without destroying useful symbols like C++, quotes, commands, etc.
+    Only removes surrounding whitespace and trailing sentence punctuation.
+    """
     text = text.strip()
     text = unicodedata.normalize("NFKC", text)
     text = re.sub(r"[?!.,]+$", "", text).strip()
