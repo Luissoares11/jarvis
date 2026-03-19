@@ -13,7 +13,6 @@ venv/
 *.bin
 
 # Logs
-*.log
 
 # OS files
 .DS_Store
