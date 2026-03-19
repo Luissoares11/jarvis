@@ -27,8 +27,16 @@ def split_values(text: str):
 
     text = text.replace(" and ", ",")
     text = text.replace(";", ",")
-    text = text.replace(" ,", ",")
-    text = text.replace(", ", ",")
 
-    parts = [clean_value(p) for p in text.split(",")]
-    return [p for p in parts if p]
+    parts = [p.strip() for p in text.split(",") if p.strip()]
+
+    result = []
+    seen = set()
+
+    for part in parts:
+        value = clean_value(part)
+        if value and value not in seen:
+            seen.add(value)
+            result.append(value)
+
+    return result

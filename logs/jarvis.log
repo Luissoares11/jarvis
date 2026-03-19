@@ -519,3 +519,215 @@ Last intent: recall
 - my name
 - the commands i use to build websites
 - the devices i use
+[2026-03-19 20:09:40] [USER] what do you know
+[2026-03-19 20:09:40] [JARVIS] - lara soares
+- my name
+[2026-03-19 20:09:46] [USER] remove my name
+[2026-03-19 20:09:46] [JARVIS] Got it. I forgot your name.
+[2026-03-19 20:09:57] [USER] what do you knoe
+[2026-03-19 20:09:57] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 20:09:59] [USER] what do you know
+[2026-03-19 20:09:59] [JARVIS] - lara soares
+[2026-03-19 20:10:02] [USER] who do you know
+[2026-03-19 20:10:02] [JARVIS] - lara soares
+[2026-03-19 20:10:07] [USER] who am i
+[2026-03-19 20:10:07] [JARVIS] I don’t know about that, sir.
+[2026-03-19 20:10:20] [USER] I am Luis Soares and i am 20 years old
+[2026-03-19 20:10:20] [JARVIS] I don’t know about that, sir.
+[2026-03-19 20:10:36] [USER] I am Luis Soares
+[2026-03-19 20:10:36] [JARVIS] Consider it handled. I will remember user's name.
+[2026-03-19 20:10:58] [USER] i am 20 years old
+[2026-03-19 20:10:58] [JARVIS] Done, sir. I will remember user's age.
+[2026-03-19 20:11:01] [USER] who am i
+[2026-03-19 20:11:01] [JARVIS] - luis soares
+[2026-03-19 20:11:08] [USER] how old am i
+[2026-03-19 20:11:08] [JARVIS] I don’t know about that, sir.
+[2026-03-19 20:11:12] [USER] tell me my age
+[2026-03-19 20:11:12] [JARVIS] I know who my is, but I don't know their age yet.
+[2026-03-19 20:11:32] [USER] lara soares is my girlfriend
+[2026-03-19 20:11:32] [JARVIS] Got it. I will remember lara soares.
+[2026-03-19 20:11:41] [USER] she is 21
+[2026-03-19 20:11:41] [JARVIS] Done, sir. I will remember lara soares's age.
+[2026-03-19 20:12:00] [USER] tell me lara soares age
+[2026-03-19 20:12:00] [JARVIS] lara soares:
+- age: 21
+[2026-03-19 20:12:09] [USER] who is lara soares
+[2026-03-19 20:12:09] [JARVIS] lara soares:
+- relationship: girlfriend
+- age: 21
+[2026-03-19 20:12:34] [USER] remember that the devices i use are, an ipgone, a pc and a desktop
+[2026-03-19 20:12:34] [JARVIS] Got it. I will remember 'the devices i use'.
+[2026-03-19 20:12:43] [USER] tell me the devices i use
+[2026-03-19 20:12:43] [JARVIS] - an ipgone a pc
+- a desktop
+[2026-03-19 20:12:59] [USER] remember that the devices i use are, an iphone, a pc and a desktop
+[2026-03-19 20:12:59] [JARVIS] Consider it handled. I will remember 'the devices i use'.
+[2026-03-19 20:13:03] [USER] tell me the devices i use
+[2026-03-19 20:13:03] [JARVIS] - an ipgone a pc
+- a desktop
+- an iphone a pc
+[2026-03-19 20:21:17] [USER] I am Luis Soares and i am 20 years old
+[2026-03-19 20:21:17] [JARVIS] Consider it handled. I will remember that.
+[2026-03-19 20:21:21] [USER] who am i
+[2026-03-19 20:21:21] [JARVIS] - luis soares
+[2026-03-19 20:21:27] [USER] how old am i
+[2026-03-19 20:21:27] [JARVIS] user:
+- age: 20
+[2026-03-19 20:21:51] [USER] remember that the devices i use are iphone, a pc and a desktop
+[2026-03-19 20:21:51] [JARVIS] Consider it handled. I will remember 'the devices i use'.
+[2026-03-19 20:22:00] [USER] tell me the devices i use
+[2026-03-19 20:22:00] [JARVIS] - a desktop
+- iphone a pc
+[2026-03-19 20:24:34] [USER] hi
+[2026-03-19 20:24:34] [JARVIS] At your service.
+[2026-03-19 20:24:46] [USER] tell me what do you know
+[2026-03-19 20:24:46] [JARVIS] I don’t know about that, sir.
+[2026-03-19 20:24:51] [USER] what do you know
+[2026-03-19 20:24:51] [JARVIS] - age
+- lara soares
+- my name
+- the devices i use
+[2026-03-19 20:25:03] [USER] tell me the devices i use
+[2026-03-19 20:25:03] [JARVIS] - a desktop
+- iphone a pc
+[2026-03-19 20:25:09] [USER] remove the first
+[2026-03-19 20:25:09] [JARVIS] I don’t know about that, sir.
+[2026-03-19 20:25:15] [USER] remove
+[2026-03-19 20:25:15] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 21:18:50] [USER] what do you know
+[2026-03-19 21:18:50] [JARVIS] - age
+- lara soares
+- my name
+- the devices i use
+[2026-03-19 21:18:59] [USER] what are the devices i use
+[2026-03-19 21:18:59] [JARVIS] - a desktop
+- iphone a pc
+[2026-03-19 21:19:05] [USER] remove the second
+[2026-03-19 21:19:05] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 21:19:15] [USER] remove second
+[2026-03-19 21:19:15] [JARVIS] I don’t know about that, sir.
+[2026-03-19 21:19:26] [USER] remove first
+[2026-03-19 21:19:26] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 21:19:45] [USER] remove the first
+[2026-03-19 21:19:45] [JARVIS] I don’t know about that, sir.
+[2026-03-19 21:20:06] [USER] remember that the devices i use are iphone, pc and desktoo
+[2026-03-19 21:20:06] [JARVIS] Consider it handled. I will remember 'the devices i use'.
+[2026-03-19 21:20:14] [USER] what are the devices i use
+[2026-03-19 21:20:14] [JARVIS] - iphone
+- pc
+- desktoo
+[2026-03-19 21:20:22] [USER] remove first
+[2026-03-19 21:20:22] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 21:20:30] [USER] what do you know
+[2026-03-19 21:20:30] [JARVIS] - age
+- lara soares
+- my name
+- the devices i use
+[2026-03-19 21:21:55] [USER] tell me the devices i use
+[2026-03-19 21:21:55] [JARVIS] - iphone
+- pc
+- desktoo
+[2026-03-19 21:22:04] [USER] remove the first
+[2026-03-19 21:22:04] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 21:26:07] [USER] what are the devices i use
+[2026-03-19 21:26:07] [JARVIS] - iphone
+- pc
+- desktoo
+[2026-03-19 21:26:13] [USER] remove the third
+[2026-03-19 21:26:13] [JARVIS] Got it. Removed 'desktoo'.
+[2026-03-19 21:26:17] [USER] add desktop
+[2026-03-19 21:26:17] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 23:41:04] [USER] i am luis soares
+[2026-03-19 23:41:04] [JARVIS] Got it. I will remember your name.
+[2026-03-19 23:41:11] [USER] i am 20 years old
+[2026-03-19 23:41:11] [JARVIS] Done, sir. I will remember your age.
+[2026-03-19 23:41:16] [USER] who am i
+[2026-03-19 23:41:16] [JARVIS] Your name is luis soares.
+[2026-03-19 23:41:21] [USER] how old am i
+[2026-03-19 23:41:21] [JARVIS] You are 20 years old.
+[2026-03-19 23:41:35] [USER] lara soares is my girlfriend
+[2026-03-19 23:41:35] [JARVIS] Consider it handled. I will remember lara soares.
+[2026-03-19 23:41:42] [USER] who is my girlfriend
+[2026-03-19 23:41:42] [JARVIS] Done, sir. I will remember who.
+[2026-03-19 23:41:58] [USER] she is 21
+[2026-03-19 23:41:58] [JARVIS] Done, sir. I will remember who's age.
+[2026-03-19 23:42:06] [USER] what is her age
+[2026-03-19 23:42:06] [JARVIS] who:
+- age: 21
+[2026-03-19 23:42:13] [USER] who is lara soares
+[2026-03-19 23:42:13] [JARVIS] lara soares:
+- relationship: girlfriend
+[2026-03-19 23:42:30] [USER] remember that the devices i use are iphone, pc and desktop
+[2026-03-19 23:42:30] [JARVIS] Consider it handled. I will remember 'the devices i use'.
+[2026-03-19 23:42:37] [USER] what are the devices i use
+[2026-03-19 23:42:37] [JARVIS] - iphone
+- pc
+- desktop
+[2026-03-19 23:42:45] [USER] remove second
+[2026-03-19 23:42:45] [JARVIS] Got it. Removed 'pc'.
+[2026-03-19 23:42:54] [USER] add thinkpad
+[2026-03-19 23:42:54] [JARVIS] Done, sir. Added 'thinkpad'.
+[2026-03-19 23:43:04] [USER] what are the devices i use
+[2026-03-19 23:43:04] [JARVIS] - iphone
+- desktop
+- thinkpad
+[2026-03-19 23:43:18] [USER] replace thinkpad with laptop
+[2026-03-19 23:43:18] [JARVIS] Consider it handled. Replaced 'thinkpad' with 'laptop'.
+[2026-03-19 23:43:23] [USER] what are the devices i use
+[2026-03-19 23:43:23] [JARVIS] - iphone
+- desktop
+- laptop
+[2026-03-19 23:43:29] [USER] what do you know
+[2026-03-19 23:43:29] [JARVIS] - lara soares
+- my age
+- my name
+- the devices i use
+- who
+[2026-03-19 23:43:37] [USER] jarvis facts
+[2026-03-19 23:43:37] [JARVIS] - user | name | luis soares
+- user | age | 20
+- lara soares | relationship | girlfriend
+- who | relationship | girlfriend
+- who | age | 21
+[2026-03-19 23:43:48] [USER] jarvis collections
+[2026-03-19 23:43:48] [JARVIS] - user | the devices i use | ['iphone', 'desktop', 'laptop']
+[2026-03-19 23:43:57] [USER] jarvis aliases
+[2026-03-19 23:43:57] [JARVIS] - lara -> lara soares
+- my girlfriend -> who
+- my girl -> who
+- gf -> who
+- who -> who
+[2026-03-19 23:44:06] [USER] jarvis context
+[2026-03-19 23:44:06] [JARVIS] - last_entity: who
+- last_fact_id: e55a7e73-ac97-47ab-9586-7885a6fc2119
+- last_subject: who
+- last_relation: age
+- last_results: [{'id': '0aed6c28-cbf8-420f-8879-208baa18a1dd', 'subject': 'user', 'relation': 'name', 'object': 'luis soares'}, {'id': '47cc9cd5-3294-40ab-8195-2fd42a7171e7', 'subject': 'user', 'relation': 'age', 'object': '20'}, {'id': '858325d3-eeb2-403d-8b66-bf1fa91d43df', 'subject': 'lara soares', 'relation': 'relationship', 'object': 'girlfriend'}, {'id': '42268a41-0acb-4af6-9d92-1f28a713a96b', 'subject': 'who', 'relation': 'relationship', 'object': 'girlfriend'}, {'id': 'e55a7e73-ac97-47ab-9586-7885a6fc2119', 'subject': 'who', 'relation': 'age', 'object': '21'}]
+- last_action: debug_command
+- last_collection_owner: user
+- last_collection_name: the devices i use
+[2026-03-19 23:47:01] [USER] forget who
+[2026-03-19 23:47:01] [JARVIS] Done, sir. I forgot 'who'.
+[2026-03-19 23:47:11] [USER] lara soares is my girlfriend
+[2026-03-19 23:47:11] [JARVIS] Consider it handled. I will remember lara soares.
+[2026-03-19 23:47:18] [USER] who is my girlfriend
+[2026-03-19 23:47:18] [JARVIS] lara soares:
+- relationship: girlfriend
+[2026-03-19 23:47:24] [USER] shi is 21
+[2026-03-19 23:47:24] [JARVIS] Consider it handled. I will remember shi's age.
+[2026-03-19 23:47:29] [USER] she is 21
+[2026-03-19 23:47:29] [JARVIS] Consider it handled. I will remember shi's age.
+[2026-03-19 23:47:36] [USER] forget she
+[2026-03-19 23:47:36] [JARVIS] Consider it handled. I forgot 'shi'.
+[2026-03-19 23:47:40] [USER] lara soares is my girlfriend
+[2026-03-19 23:47:40] [JARVIS] Consider it handled. I will remember lara soares.
+[2026-03-19 23:47:44] [USER] who is my girlfriend
+[2026-03-19 23:47:44] [JARVIS] lara soares:
+- relationship: girlfriend
+[2026-03-19 23:47:48] [USER] she is 21
+[2026-03-19 23:47:48] [JARVIS] Got it. I will remember lara soares's age.
+[2026-03-19 23:47:54] [USER] what is her age
+[2026-03-19 23:47:54] [JARVIS] lara soares:
+- age: 21
+[2026-03-19 23:48:00] [USER] who is lara soares
+[2026-03-19 23:48:00] [JARVIS] lara soares is your girlfriend and is 21 years old.

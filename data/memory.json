@@ -1,32 +1,47 @@
 {
-    "topics": {
-        "my favourite tools": [
-            "python"
-        ],
-        "the commands i use to build websites": [
-            "git add",
-            "git commit -m \"\"",
-            "git push"
-        ],
-        "the devices i use": [
-            "iphone 11 pro max",
-            "a pc",
-            "a desktop"
-        ],
-        "my name": [
-            "luis soares",
-            "20 years old"
-        ]
-    },
-    "profiles": {
-        "lara soares": {
-            "relationship": "girlfriend",
-            "age": "21"
+    "facts": [
+        {
+            "id": "0aed6c28-cbf8-420f-8879-208baa18a1dd",
+            "subject": "user",
+            "relation": "name",
+            "object": "luis soares"
+        },
+        {
+            "id": "47cc9cd5-3294-40ab-8195-2fd42a7171e7",
+            "subject": "user",
+            "relation": "age",
+            "object": "20"
+        },
+        {
+            "id": "18e50e98-1037-4a4a-bcb4-1bbf68897088",
+            "subject": "lara soares",
+            "relation": "relationship",
+            "object": "girlfriend"
+        },
+        {
+            "id": "71e95139-ed78-4b9b-90e7-5d7f84aa92bf",
+            "subject": "lara soares",
+            "relation": "age",
+            "object": "21"
         }
-    },
+    ],
+    "collections": [
+        {
+            "id": "e18b07ea-a3e9-487f-b893-50aa45d88ae6",
+            "owner": "user",
+            "name": "the devices i use",
+            "items": [
+                "iphone",
+                "desktop",
+                "laptop"
+            ]
+        }
+    ],
     "aliases": {
+        "lara": "lara soares",
         "my girlfriend": "lara soares",
         "my girl": "lara soares",
-        "gf": "lara soares"
+        "gf": "lara soares",
+        "who": "who"
     }
 }
