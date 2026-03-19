@@ -7,6 +7,15 @@
             "git add",
             "git commit -m \"\"",
             "git push"
+        ],
+        "the devices i use": [
+            "iphone 11 pro max",
+            "a pc",
+            "a desktop"
+        ],
+        "my name": [
+            "luis soares",
+            "20 years old"
         ]
     },
     "profiles": {

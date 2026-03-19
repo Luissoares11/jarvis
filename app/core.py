@@ -18,6 +18,7 @@ from .memory import (
     move_in_last_topic,
     delete_profile_field,
     infer_profile_update,
+    list_profiles,
 )
 from .personality import say
 from .utils import clean_text
@@ -38,6 +39,9 @@ def format_profile(profile_result):
         for key, value in profile_result["fields"].items():
             lines.append(f"- {key}: {value}")
         return "\n".join(lines)
+
+    if profile_result["type"] == "profile_missing_field":
+        return f"I know who {profile_result['name']} is, but I don't know their {profile_result['field']} yet."
 
     if profile_result["type"] == "ambiguous_profile":
         lines = ["I know more than one match:"]
@@ -68,7 +72,19 @@ def handle_system_command(text_clean: str):
             return "I don't know anything yet, sir."
         return "\n".join(f"- {m}" for m in memories)
 
-    return say("unknown")
+    if text_clean in ["what do you know", "what do you know?"]:
+        memories = list_memories()
+        if not memories:
+            return "I don't know anything yet, sir."
+        return "\n".join(f"- {m}" for m in memories)
+
+    if text_clean in ["who do you know", "who do you know?"]:
+        profiles = list_profiles()
+        if not profiles:
+            return "I don't know anyone yet."
+        return "\n".join(f"- {p}" for p in profiles)
+
+    return None
 
 
 def process_input(user_input: str):
@@ -81,13 +97,20 @@ def process_input(user_input: str):
         log_event("jarvis", response)
         return response
 
+    # 🔥 direct system command handling first
+    system_response = handle_system_command(text_clean)
+    if system_response:
+        log_event("user", user_input)
+        log_event("jarvis", system_response)
+        return system_response
+
     intent = detect_intent(text_clean)
 
     if intent == "greeting":
         response = say("greeting")
 
     elif intent == "remember":
-        response = remember(text)
+        response = remember(text) or say("unknown")
 
     elif intent == "list_memories":
         memories = list_memories()
@@ -122,10 +145,7 @@ def process_input(user_input: str):
 
             profile_result = recall_profile(target)
             if profile_result and profile_result["type"] in ["profile", "profile_name"]:
-                if profile_result["type"] == "profile_name":
-                    response = delete_memory(profile_result["name"])
-                else:
-                    response = delete_memory(profile_result["name"])
+                response = delete_memory(profile_result["name"])
             else:
                 topic_result = recall_topic(target)
                 if topic_result and topic_result["mode"] in ["topic_exact", "topic_fuzzy", "topic_semantic"]:
@@ -159,12 +179,9 @@ def process_input(user_input: str):
                 response = say("unknown")
 
     elif intent == "recall":
-        if text_clean in ["who am i", "whats my name", "what is my name"]:
+        if text_clean in ["who am i", "whats my name", "what is my name", "do you know who am i", "do you know who i am"]:
             result = recall_topic("my name")
-            if result:
-                response = format_items(result["values"])
-            else:
-                response = say("unknown")
+            response = format_items(result["values"]) if result else say("unknown")
         else:
             profile_result = recall_profile(text)
             if profile_result:
@@ -178,31 +195,32 @@ def process_input(user_input: str):
                     response = item if not error else error
                 else:
                     result = recall_topic(text)
-                    if result:
-                        response = format_items(result["values"])
-                    else:
-                        response = say("unknown")
+                    response = format_items(result["values"]) if result else say("unknown")
 
     elif intent == "system":
-        response = handle_system_command(text_clean)
+        response = handle_system_command(text_clean) or say("unknown")
 
     elif intent == "command":
         response = run_command(text_clean) or say("unknown")
 
     else:
-        inferred = infer_profile_update(text)
-        if inferred:
-            response = inferred
+        remembered = remember(text)
+        if remembered:
+            response = remembered
         else:
-            profile_result = recall_profile(text)
-            if profile_result:
-                response = format_profile(profile_result)
+            inferred = infer_profile_update(text)
+            if inferred:
+                response = inferred
             else:
-                result = recall_topic(text)
-                if result:
-                    response = format_items(result["values"])
+                profile_result = recall_profile(text)
+                if profile_result:
+                    response = format_profile(profile_result)
                 else:
-                    response = say("unknown")
+                    result = recall_topic(text)
+                    if result:
+                        response = format_items(result["values"])
+                    else:
+                        response = say("unknown")
 
     log_event("user", user_input)
     log_event("jarvis", response)

@@ -22,7 +22,13 @@ def clean_value(text: str) -> str:
     return text
 
 
-def split_values(raw: str) -> list[str]:
-    raw = raw.strip()
-    parts = re.split(r"\s*,\s*|\s+and\s+", raw, flags=re.IGNORECASE)
-    return [clean_value(p) for p in parts if clean_value(p)]
+def split_values(text: str):
+    text = text.lower().strip()
+
+    text = text.replace(" and ", ",")
+    text = text.replace(";", ",")
+    text = text.replace(" ,", ",")
+    text = text.replace(", ", ",")
+
+    parts = [clean_value(p) for p in text.split(",")]
+    return [p for p in parts if p]

@@ -153,8 +153,11 @@ def infer_profile_update(text: str):
 
     patterns = [
         (r"(.+?) is (\d+)$", "name_age"),
-        (r"(he|she) is (\d+)$", "pronoun_age"),
         (r"(.+?) age is (\d+)", "name_age_alt"),
+        (r"(he|she|her|his) is (\d+)$", "pronoun_age"),
+        (r"(her|his|their) age is (.+)", "pronoun_age_alt"),
+        (r"(?:change|update) (.+?) age to (\d+)", "change_name_age"),
+        (r"(?:change|update) (her|his|their) age to (\d+)", "change_pronoun_age"),
     ]
 
     for pattern, mode in patterns:
@@ -162,49 +165,65 @@ def infer_profile_update(text: str):
         if not match:
             continue
 
-        # 👉 NAME: "lara soares is 21"
         if mode == "name_age":
             name = clean_value(match.group(1))
             age = clean_value(match.group(2))
 
             resolved = resolve_profile_reference(name)
-
             if resolved["status"] == "ok":
                 canonical = resolved["name"]
                 set_profile_field(canonical, "age", age)
-
-                push_history("infer_profile", profile=canonical)
-
+                push_history("infer_profile", profile=canonical, query=text)
                 return f"{say('confirm')} I will remember {canonical}'s age."
 
-        # 👉 PRONOUN: "she is 21"
-        if mode == "pronoun_age":
-            age = clean_value(match.group(2))
-
-            if context.get("last_profile"):
-                canonical = context["last_profile"]
-
-                set_profile_field(canonical, "age", age)
-
-                push_history("infer_profile", profile=canonical)
-
-                return f"{say('confirm')} I will remember {canonical}'s age."
-
-        # 👉 ALT: "lara age is 21"
         if mode == "name_age_alt":
             name = clean_value(match.group(1))
             age = clean_value(match.group(2))
 
             resolved = resolve_profile_reference(name)
-
             if resolved["status"] == "ok":
                 canonical = resolved["name"]
-
                 set_profile_field(canonical, "age", age)
-
-                push_history("infer_profile", profile=canonical)
-
+                push_history("infer_profile", profile=canonical, query=text)
                 return f"{say('confirm')} I will remember {canonical}'s age."
+
+        if mode == "pronoun_age":
+            age = clean_value(match.group(2))
+
+            if context.get("last_profile"):
+                canonical = context["last_profile"]
+                set_profile_field(canonical, "age", age)
+                push_history("infer_profile", profile=canonical, query=text)
+                return f"{say('confirm')} I will remember {canonical}'s age."
+
+        if mode == "pronoun_age_alt":
+            age = clean_value(match.group(2))
+
+            if context.get("last_profile"):
+                canonical = context["last_profile"]
+                set_profile_field(canonical, "age", age)
+                push_history("infer_profile", profile=canonical, query=text)
+                return f"{say('confirm')} I will remember {canonical}'s age."
+
+        if mode == "change_name_age":
+            name = clean_value(match.group(1))
+            age = clean_value(match.group(2))
+
+            resolved = resolve_profile_reference(name)
+            if resolved["status"] == "ok":
+                canonical = resolved["name"]
+                set_profile_field(canonical, "age", age)
+                push_history("infer_profile", profile=canonical, query=text)
+                return f"{say('confirm')} Updated {canonical}'s age."
+
+        if mode == "change_pronoun_age":
+            age = clean_value(match.group(2))
+
+            if context.get("last_profile"):
+                canonical = context["last_profile"]
+                set_profile_field(canonical, "age", age)
+                push_history("infer_profile", profile=canonical, query=text)
+                return f"{say('confirm')} Updated {canonical}'s age."
 
     return None
 
@@ -516,13 +535,19 @@ def recall_profile(query: str):
 
     patterns = [
         (r"(?:what do you know about|tell me about|who is) (.+)", "full_profile"),
-        (r"what is (.+?)s age", "field_age"),
-        (r"whats (.+?)s age", "field_age"),
+
+        # age
+        (r"(?:what is|whats) (.+?)s age", "field_age"),
+        (r"(?:what is|whats) the age of (.+)", "field_age"),
         (r"how old is (.+)", "field_age"),
-        (r"what is (.+?) age", "field_age"),
-        (r"whats (.+?) age", "field_age"),
-        (r"what is (.+?)s name", "field_name"),
-        (r"whats (.+?)s name", "field_name"),
+        (r"(?:what is|whats) (.+?) age", "field_age"),
+        (r"tell me (.+?) age", "field_age"),
+        (r"tell me the age of (.+)", "field_age"),
+        (r"(.+?) age", "field_age"),
+
+        # name
+        (r"(?:what is|whats) (.+?)s name", "field_name"),
+        (r"(?:what is|whats) the name of (.+)", "field_name"),
     ]
 
     for pattern, mode in patterns:
@@ -561,6 +586,11 @@ def recall_profile(query: str):
                     "name": canonical,
                     "fields": {"age": profile["age"]},
                 }
+            return {
+                "type": "profile_missing_field",
+                "name": canonical,
+                "field": "age",
+            }
 
         if mode == "field_name":
             return {
@@ -577,36 +607,59 @@ def list_memories():
 
 
 def remember(text: str):
-    self_match = re.search(r"remember that i am (.+)", text.lower())
-    if self_match:
-        name = clean_value(self_match.group(1))
-        if "my name" not in user_memory:
-            user_memory["my name"] = []
-        if name not in user_memory["my name"]:
-            user_memory["my name"].append(name)
+    text_lower = text.lower().strip()
 
-        save_memory()
-        refresh_embeddings()
-        push_history("remember", topic="my name", item=name, query=text)
-        return f"{say('confirm')} I will remember your name."
+    # avoid catching age/self-description as a name
+    blocked_self_patterns = [
+        r"i am \d+\s+years?\s+old",
+        r"im \d+\s+years?\s+old",
+        r"my age is \d+",
+    ]
+
+    for pattern in blocked_self_patterns:
+        if re.search(pattern, text_lower):
+            return None
+
+    # natural name detection
+    self_patterns = [
+        r"^i am ([a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ\s'-]+)$",
+        r"^my name is ([a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ\s'-]+)$",
+        r"^im ([a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ\s'-]+)$",
+        r"^remember that i am ([a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ\s'-]+)$",
+    ]
+
+    for pattern in self_patterns:
+        match = re.search(pattern, text_lower)
+        if match:
+            name = clean_value(match.group(1))
+
+            if "my name" not in user_memory:
+                user_memory["my name"] = []
+
+            if name not in user_memory["my name"]:
+                user_memory["my name"].append(name)
+
+            save_memory()
+            refresh_embeddings()
+            push_history("remember", topic="my name", item=name, query=text)
+
+            return f"{say('confirm')} I will remember your name."
 
     profile_result = remember_profile(text)
     if profile_result:
         return profile_result
 
     patterns = [
-        r"remember that (.+?) is (.+)",
-        r"remember that (.+?) are (.+)",
+        r"remember that (.+?) is[, ]+(.+)",
+        r"remember that (.+?) are[, ]+(.+)",
         r"remember that (.+?)\s*=\s*(.+)",
-        r"remember: (.+?) is (.+)",
-        r"remember: (.+?) are (.+)",
+        r"remember: (.+?) is[, ]+(.+)",
+        r"remember: (.+?) are[, ]+(.+)",
         r"remember: (.+?)\s*=\s*(.+)",
         r"remember (.+?) as (.+)",
         r"remember (.+?) -> (.+)",
         r"remember (.+?): (.+)",
     ]
-
-    text_lower = text.lower()
 
     for pattern in patterns:
         match = re.search(pattern, text_lower)
@@ -625,11 +678,16 @@ def remember(text: str):
 
             save_memory()
             refresh_embeddings()
-            push_history("remember", topic=key, item=values[-1] if values else None, query=text)
+            push_history(
+                "remember",
+                topic=key,
+                item=values[-1] if values else None,
+                query=text,
+            )
 
             return f"{say('confirm')} I will remember '{key}'."
 
-    return say("unknown")
+    return None
 
 
 def recall_topic(query: str):
@@ -1000,6 +1058,15 @@ def delete_memory(key: str):
     key_clean = clean_text(key)
     deleted_any = False
     deleted_name = key_clean
+
+    # 🔥 SPECIAL CASE: my name
+    if key_clean in ["my name", "name"]:
+        if "my name" in user_memory:
+            del user_memory["my name"]
+            save_memory()
+            refresh_embeddings()
+            push_history("delete_memory", topic="my name")
+            return f"{say('confirm')} I forgot your name."
 
     if key_clean in user_memory:
         del user_memory[key_clean]

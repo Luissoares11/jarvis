@@ -1,23 +1,30 @@
 from .utils import clean_text
 
 
-def detect_intent(text: str) -> str:
-    text = clean_text(text)
+def detect_intent(text: str):
+    text = text.lower().strip()
 
-    if not text:
-        return "empty"
+    if any(greet in text for greet in ["hello", "hi", "hey", "yo"]):
+        return "greeting"
 
-    if any(phrase in text for phrase in [
-        "what do you know",
-        "tell me what you know",
-        "list memories",
-        "show memories",
-        "show what you know",
-    ]):
-        return "list_memories"
-
-    if any(word in text for word in ["remember", "rembember", "remeber"]):
+    if any(word in text for word in ["remember", "remmeber", "remeber", "rember"]):
         return "remember"
+
+    if text in [
+        "what do you know",
+        "what do you know?",
+        "who do you know",
+        "who do you know?",
+        "jarvis status",
+        "jarvis memory",
+    ]:
+        return "system"
+
+    if any(text.startswith(x) for x in ["forget ", "delete "]):
+        return "delete_topic"
+
+    if any(text.startswith(x) for x in ["remove ", "delete item "]):
+        return "remove_item"
 
     if text.startswith("replace "):
         return "replace_item"
@@ -25,31 +32,25 @@ def detect_intent(text: str) -> str:
     if text.startswith("move "):
         return "move_item"
 
-    if any(text.startswith(prefix) for prefix in ["forget ", "delete "]):
-        return "delete_topic"
-
-    if any(text.startswith(prefix) for prefix in ["remove ", "delete item "]):
-        return "remove_item"
-
-    if (
-        any(text.startswith(prefix) for prefix in ["add ", "append "])
-        or " add " in f" {text} "
-        or text.startswith("and ")
-    ):
+    if text.startswith("add ") or text.startswith("append ") or text.startswith("and "):
         return "add"
 
-    if any(word in text for word in [
-        "what", "who", "how", "tell", "show", "list", "know", "commands", "name"
-    ]):
+    recall_starters = [
+        "what is",
+        "whats",
+        "who is",
+        "tell me",
+        "what are",
+        "what do",
+        "how old",
+        "do you know",
+        "who am i",
+    ]
+    if any(text.startswith(x) for x in recall_starters):
         return "recall"
 
-    if text.startswith("jarvis "):
-        return "system"
-
-    if text.startswith("git ") or text.startswith("npm "):
+    cmd_starters = ["time", "open google", "open youtube"]
+    if any(text.startswith(x) for x in cmd_starters):
         return "command"
-
-    if any(greet in text for greet in ["hello", "hi", "hey"]):
-        return "greeting"
 
     return "unknown"

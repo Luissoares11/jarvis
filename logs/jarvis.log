@@ -391,3 +391,131 @@ Last intent: recall
 [2026-03-18 00:30:20] [JARVIS] Done, sir. I forgot 'my name'.
 [2026-03-18 00:31:03] [USER] remember that the devices i use are, iphone 11 pro max, a pc and a desktop
 [2026-03-18 00:31:03] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:12:53] [USER] what do you nkow
+[2026-03-19 19:12:53] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:12:59] [USER] what do you know
+[2026-03-19 19:12:59] [JARVIS] - lara soares
+- my favourite tools
+- the commands i use to build websites
+[2026-03-19 19:13:09] [USER] who do you knoe
+[2026-03-19 19:13:09] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:13:10] [USER] who do you know
+[2026-03-19 19:13:10] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 19:13:26] [USER] who is Lara Soares
+[2026-03-19 19:13:26] [JARVIS] lara soares:
+- relationship: girlfriend
+- age: 21
+[2026-03-19 19:13:35] [USER] whats her age
+[2026-03-19 19:13:35] [JARVIS] lara soares:
+- age: 21
+[2026-03-19 19:13:45] [USER] can you change her age to 22?
+[2026-03-19 19:13:45] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 19:13:53] [USER] she is 22
+[2026-03-19 19:13:53] [JARVIS] Consider it handled. I will remember lara soares's age.
+[2026-03-19 19:13:57] [USER] whats her age
+[2026-03-19 19:13:57] [JARVIS] lara soares:
+- age: 22
+[2026-03-19 19:14:02] [USER] she is 21
+[2026-03-19 19:14:02] [JARVIS] Got it. I will remember lara soares's age.
+[2026-03-19 19:14:28] [USER] i am Luis Soares
+[2026-03-19 19:14:28] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:14:34] [USER] my name is Luis
+[2026-03-19 19:14:34] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 19:15:11] [USER] remmeber that the devices i use are iphone 11 pro max, a pc and a desktop
+[2026-03-19 19:15:11] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:15:18] [USER] remeber that the devices i use are iphone 11 pro max, a pc and a desktop
+[2026-03-19 19:15:18] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:15:25] [USER] remember that the devices i use are iphone 11 pro max, a pc and a desktop
+[2026-03-19 19:15:25] [JARVIS] Done, sir. I will remember 'the devices i use'.
+[2026-03-19 19:15:33] [USER] what are the devices i use
+[2026-03-19 19:15:33] [JARVIS] - iphone 11 pro max
+- a pc
+- a desktop
+[2026-03-19 19:15:40] [USER] tell me the devices i use
+[2026-03-19 19:15:40] [JARVIS] - iphone 11 pro max
+- a pc
+- a desktop
+[2026-03-19 19:15:49] [USER] what do you know
+[2026-03-19 19:15:49] [JARVIS] - lara soares
+- my favourite tools
+- the commands i use to build websites
+- the devices i use
+[2026-03-19 19:15:55] [USER] who do you know
+[2026-03-19 19:15:55] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:18:29] [USER] my my name is Luis Soares
+[2026-03-19 19:18:29] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:18:34] [USER] my name is Luis Soares
+[2026-03-19 19:18:34] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:18:42] [USER] I am Luis Soares
+[2026-03-19 19:18:42] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 19:28:58] [USER] who do you know
+[2026-03-19 19:28:58] [JARVIS] - lara soares
+[2026-03-19 19:29:04] [USER] what do you know
+[2026-03-19 19:29:04] [JARVIS] - lara soares
+- my favourite tools
+- the commands i use to build websites
+- the devices i use
+[2026-03-19 19:29:09] [USER] I am Luis Soares
+[2026-03-19 19:29:09] [JARVIS] Done, sir. I will remember your name.
+[2026-03-19 19:29:18] [USER] my name is Luis
+[2026-03-19 19:29:18] [JARVIS] Consider it handled. I will remember your name.
+[2026-03-19 19:29:26] [USER] what do you know
+[2026-03-19 19:29:26] [JARVIS] - lara soares
+- my favourite tools
+- my name
+- the commands i use to build websites
+- the devices i use
+[2026-03-19 19:29:30] [USER] remove my name
+[2026-03-19 19:29:30] [JARVIS] Done, sir. I forgot your name.
+[2026-03-19 19:29:37] [USER] who do you know
+[2026-03-19 19:29:37] [JARVIS] - lara soares
+[2026-03-19 19:29:53] [USER] who am i?
+[2026-03-19 19:29:53] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:29:59] [USER] I am Luis Soares
+[2026-03-19 19:29:59] [JARVIS] Got it. I will remember your name.
+[2026-03-19 19:30:04] [USER] who am i?
+[2026-03-19 19:30:04] [JARVIS] - luis soares
+[2026-03-19 19:30:12] [USER] i am 20 years old
+[2026-03-19 19:30:12] [JARVIS] Done, sir. I will remember your name.
+[2026-03-19 19:30:26] [USER] Whats Lara Soares age
+[2026-03-19 19:30:26] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:30:31] [USER] What is Lara Soares age
+[2026-03-19 19:30:31] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:30:41] [USER] tell me Lara Soares age
+[2026-03-19 19:30:41] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 19:34:12] [USER] I am Luis Soares
+[2026-03-19 19:34:12] [JARVIS] Done, sir. I will remember your name.
+[2026-03-19 19:34:18] [USER] I am 20 years orld
+[2026-03-19 19:34:18] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 19:34:22] [USER] I am 20 years old
+[2026-03-19 19:34:22] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:34:48] [USER] what is Lara Soares age
+[2026-03-19 19:34:48] [JARVIS] I don’t know about that, sir.
+[2026-03-19 19:35:01] [USER] who is Lara Soares
+[2026-03-19 19:35:01] [JARVIS] lara soares:
+- relationship: girlfriend
+- age: 21
+[2026-03-19 19:35:06] [USER] whats her age
+[2026-03-19 19:35:06] [JARVIS] lara soares:
+- age: 21
+[2026-03-19 19:35:15] [USER] tell me Lara Soares age
+[2026-03-19 19:35:15] [JARVIS] lara soares:
+- age: 21
+[2026-03-19 19:35:29] [USER] what is Lara Soares age
+[2026-03-19 19:35:29] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-19 19:35:34] [USER] who am i
+[2026-03-19 19:35:34] [JARVIS] - luis soares
+- 20 years old
+[2026-03-19 19:35:43] [USER] who fo you know
+[2026-03-19 19:35:43] [JARVIS] Hello, sir.
+[2026-03-19 19:35:48] [USER] who do you know
+[2026-03-19 19:35:48] [JARVIS] - lara soares
+[2026-03-19 19:35:52] [USER] who am i
+[2026-03-19 19:35:52] [JARVIS] - luis soares
+- 20 years old
+[2026-03-19 19:35:57] [USER] what do you know
+[2026-03-19 19:35:57] [JARVIS] - lara soares
+- my favourite tools
+- my name
+- the commands i use to build websites
+- the devices i use
