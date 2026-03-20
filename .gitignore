@@ -12,8 +12,6 @@ venv/
 *.pt
 *.bin
 
-# Logs
-
 # OS files
 .DS_Store
 Thumbs.db
