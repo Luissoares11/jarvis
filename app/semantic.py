@@ -8,6 +8,8 @@ _SOCIAL = {
     "thanks", "thank you", "ok", "okay", "cool", "got it",
     "sure", "yes", "no", "nope", "yep", "alright", "nice",
     "great", "perfect", "awesome", "understood", "fine",
+    "yeah","nah","confirm", "cancel", "correct", 
+    "do it","update it", "keep it", "leave it",
 }
 
 _ORDINALS = {"1": "first", "2": "second", "3": "third"}
@@ -22,6 +24,21 @@ def _item_number_to_word(match):
     n = match.group(1)
     return f"remove {_ORDINALS.get(n, 'last')}"
 
+def _resolve_it_update(match):
+    value = match.group(1)
+    last_relation = context.get("last_relation")
+    last_entity = context.get("last_entity")
+
+    # figure out who we're updating
+    if last_entity and last_entity != "user":
+        subject = last_entity
+    else:
+        subject = "my"
+
+    if last_relation:
+        return f"change {subject} {last_relation} to {value}"
+
+    return f"change {subject} age to {value}"
 
 SYNONYM_MAP = [
     # typo tolerance
@@ -62,6 +79,12 @@ SYNONYM_MAP = [
     (r"\b(?:remove|delete) (?:the )?first one$",     "remove first"),
     (r"\b(?:remove|delete) (?:the )?last one$",      "remove last"),
     (r"\b(?:remove|delete) item (\d+)$",             _item_number_to_word),
+
+    # updating information
+    (r"^update (?:it|this|that) to (.+)$",  _resolve_it_update),
+    (r"^change (?:it|this|that) to (.+)$",  _resolve_it_update),
+    (r"^set (?:it|this|that) to (.+)$",     _resolve_it_update),
+    (r"^make (?:it|this|that) (.+)$",       _resolve_it_update),
 ]
 
 
@@ -90,7 +113,6 @@ def _apply_collection_synonyms(text: str) -> str:
         if synonym in text:
             text = text.replace(synonym, canonical)
     return text
-
 
 def resolve_followup(text: str) -> str:
     t = text.lower().strip()

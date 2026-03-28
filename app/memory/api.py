@@ -1,185 +1,105 @@
 import uuid
 
 from app.utils import clean_text, clean_value
-from .models import Fact, Collection
-from .store import load_store, save_store
+from .store import (
+    db_find_facts, db_add_fact, db_delete_facts,
+    db_get_collection, db_set_collection, db_list_collections,
+    db_get_aliases, db_set_alias,
+)
 from .resolver import resolve_entity
 from .context import context
 
-# ── in-memory cache ──────────────────────────────────────────
-_cache = None
 
-def _get_store():
-    global _cache
-    if _cache is None:
-        _cache = load_store()
-    return _cache
-
-def _save_store():
-    global _cache
-    save_store(_cache)
-
-def invalidate_cache():
-    global _cache
-    _cache = None
-# ─────────────────────────────────────────────────────────────
+def _normalize_fact(subject, relation, object_):
+    return clean_text(subject), clean_text(relation), clean_value(object_)
 
 
-def _normalize_fact(subject: str, relation: str, object_: str):
-    return (
-        clean_text(subject),
-        clean_text(relation),
-        clean_value(object_)
-    )
-
-
-def _normalize_collection(owner: str, name: str, items: list[str]):
+def _normalize_collection(owner, name, items):
     return (
         clean_text(owner),
         clean_text(name),
-        [clean_value(item) for item in items if clean_value(item)]
+        [clean_value(i) for i in items if clean_value(i)]
     )
 
 
 def _update_fact_context(results):
     if results:
-        context["last_entity"] = results[-1]["subject"]
-        context["last_fact_id"] = results[-1]["id"]
-        context["last_subject"] = results[-1]["subject"]
+        context["last_entity"]   = results[-1]["subject"]
+        context["last_fact_id"]  = results[-1]["id"]
+        context["last_subject"]  = results[-1]["subject"]
         context["last_relation"] = results[-1]["relation"]
-        context["last_results"] = results
+        context["last_results"]  = results
     else:
         context["last_results"] = []
 
 
-def _update_collection_context(owner: str, name: str):
+def _update_collection_context(owner, name):
     context["last_collection_owner"] = clean_text(owner)
-    context["last_collection_name"] = clean_text(name)
+    context["last_collection_name"]  = clean_text(name)
 
 
 # ── FACTS ────────────────────────────────────────────────────
 
-def add_fact(subject: str, relation: str, object_: str):
-    data = _get_store()
-    facts = data["facts"]
-
+def add_fact(subject, relation, object_):
     subject, relation, object_ = _normalize_fact(subject, relation, object_)
 
-    for fact in facts:
-        if (
-            fact["subject"] == subject and
-            fact["relation"] == relation and
-            fact["object"] == object_
-        ):
-            _update_fact_context([fact])
-            return fact
+    existing = db_find_facts(subject=subject, relation=relation, object_=object_)
+    if existing:
+        _update_fact_context(existing)
+        return existing[0]
 
-    new_fact = Fact(
-        id=str(uuid.uuid4()),
-        subject=subject,
-        relation=relation,
-        object=object_,
-    ).to_dict()
-
-    facts.append(new_fact)
-    _save_store()
-
-    _update_fact_context([new_fact])
-    return new_fact
+    fact = db_add_fact(subject, relation, object_)
+    _update_fact_context([fact])
+    return fact
 
 
 def find_facts(subject=None, relation=None, object_=None):
-    data = _get_store()
-    facts = data["facts"]
-
-    subject = clean_text(subject) if subject else None
+    subject  = clean_text(subject)  if subject  else None
     relation = clean_text(relation) if relation else None
-    object_ = clean_value(object_) if object_ else None
+    object_  = clean_value(object_) if object_  else None
 
-    results = []
-
-    for fact in facts:
-        if subject is not None and fact["subject"] != subject:
-            continue
-        if relation is not None and fact["relation"] != relation:
-            continue
-        if object_ is not None and fact["object"] != object_:
-            continue
-        results.append(fact)
-
+    results = db_find_facts(subject=subject, relation=relation, object_=object_)
     _update_fact_context(results)
     return results
 
 
 def delete_facts(subject=None, relation=None, object_=None):
-    data = _get_store()
-    facts = data["facts"]
-
-    subject = clean_text(subject) if subject else None
+    subject  = clean_text(subject)  if subject  else None
     relation = clean_text(relation) if relation else None
-    object_ = clean_value(object_) if object_ else None
+    object_  = clean_value(object_) if object_  else None
 
-    kept = []
-    deleted = []
-
-    for fact in facts:
-        match = True
-        if subject is not None and fact["subject"] != subject:
-            match = False
-        if relation is not None and fact["relation"] != relation:
-            match = False
-        if object_ is not None and fact["object"] != object_:
-            match = False
-
-        if match:
-            deleted.append(fact)
-        else:
-            kept.append(fact)
-
-    data["facts"] = kept
-    _save_store()
-
+    deleted = db_delete_facts(subject=subject, relation=relation, object_=object_)
     _update_fact_context(deleted)
     return deleted
 
 
-def replace_fact(subject: str, relation: str, new_object: str):
-    subject = clean_text(subject)
-    relation = clean_text(relation)
+def replace_fact(subject, relation, new_object):
+    subject    = clean_text(subject)
+    relation   = clean_text(relation)
     new_object = clean_value(new_object)
 
     deleted = delete_facts(subject=subject, relation=relation)
-    added = add_fact(subject, relation, new_object)
-
-    return {
-        "deleted": deleted,
-        "added": added,
-    }
+    added   = add_fact(subject, relation, new_object)
+    return {"deleted": deleted, "added": added}
 
 
-def dump_subject(subject: str):
-    subject = clean_text(subject)
-    return find_facts(subject=subject)
+def dump_subject(subject):
+    return find_facts(subject=clean_text(subject))
 
 
 def resolve_and_find(subject=None, relation=None, object_=None):
-    resolved_subject = resolve_entity(subject) if subject else None
-    return find_facts(subject=resolved_subject, relation=relation, object_=object_)
+    resolved = resolve_entity(subject) if subject else None
+    return find_facts(subject=resolved, relation=relation, object_=object_)
 
 
 def list_entities():
-    data = _get_store()
-    facts = data["facts"]
-    subjects = sorted(set(f["subject"] for f in facts if f["subject"] != "user"))
-    return subjects
+    results = db_find_facts()
+    return sorted(set(f["subject"] for f in results if f["subject"] != "user"))
 
 
 # ── COLLECTIONS ──────────────────────────────────────────────
 
-def set_collection(owner: str, name: str, items: list[str]):
-    data = _get_store()
-    collections = data["collections"]
-
+def set_collection(owner, name, items):
     owner, name, items = _normalize_collection(owner, name, items)
 
     seen = set()
@@ -189,172 +109,116 @@ def set_collection(owner: str, name: str, items: list[str]):
             seen.add(item)
             clean_items.append(item)
 
-    for collection in collections:
-        if collection["owner"] == owner and collection["name"] == name:
-            collection["items"] = clean_items
-            _save_store()
-            _update_collection_context(owner, name)
-            return collection
-
-    new_collection = Collection(
-        id=str(uuid.uuid4()),
-        owner=owner,
-        name=name,
-        items=clean_items,
-    ).to_dict()
-
-    collections.append(new_collection)
-    _save_store()
-
+    col = db_set_collection(owner, name, clean_items)
     _update_collection_context(owner, name)
-    return new_collection
+    return col
 
 
-def get_collection(owner: str, name: str):
-    data = _get_store()
-    collections = data["collections"]
-
+def get_collection(owner, name):
     owner = clean_text(owner)
-    name = clean_text(name)
-
-    for collection in collections:
-        if collection["owner"] == owner and collection["name"] == name:
-            _update_collection_context(owner, name)
-            return collection
-
-    return None
+    name  = clean_text(name)
+    col   = db_get_collection(owner, name)
+    if col:
+        _update_collection_context(owner, name)
+    return col
 
 
 def list_collections(owner=None):
-    data = _get_store()
-    collections = data["collections"]
+    return db_list_collections(owner=clean_text(owner) if owner else None)
 
-    if owner is None:
-        return collections
 
+def add_collection_item(owner, name, item):
     owner = clean_text(owner)
-    return [c for c in collections if c["owner"] == owner]
+    name  = clean_text(name)
+    item  = clean_value(item)
 
-
-def add_collection_item(owner: str, name: str, item: str):
-    data = _get_store()
-    collections = data["collections"]
-
-    owner = clean_text(owner)
-    name = clean_text(name)
-    item = clean_value(item)
-
-    for collection in collections:
-        if collection["owner"] == owner and collection["name"] == name:
-            if item not in collection["items"]:
-                collection["items"].append(item)
-                _save_store()
-            _update_collection_context(owner, name)
-            return collection
+    col = db_get_collection(owner, name)
+    if col:
+        if item not in col["items"]:
+            col["items"].append(item)
+            db_set_collection(owner, name, col["items"])
+        _update_collection_context(owner, name)
+        return db_get_collection(owner, name)
 
     return set_collection(owner, name, [item])
 
 
-def remove_collection_item(owner: str, name: str, item=None, index=None):
-    data = _get_store()
-    collections = data["collections"]
-
+def remove_collection_item(owner, name, item=None, index=None):
     owner = clean_text(owner)
-    name = clean_text(name)
-    item = clean_value(item) if item is not None else None
+    name  = clean_text(name)
+    item  = clean_value(item) if item is not None else None
 
-    for collection in collections:
-        if collection["owner"] == owner and collection["name"] == name:
-            removed = None
+    col = db_get_collection(owner, name)
+    if not col:
+        return None
 
-            if index is not None:
-                if 0 <= index < len(collection["items"]):
-                    removed = collection["items"].pop(index)
-            elif item is not None:
-                if item in collection["items"]:
-                    collection["items"].remove(item)
-                    removed = item
+    removed = None
+    items   = col["items"]
 
-            if removed is not None:
-                _save_store()
+    if index is not None:
+        if 0 <= index < len(items):
+            removed = items.pop(index)
+    elif item is not None:
+        if item in items:
+            items.remove(item)
+            removed = item
 
-            _update_collection_context(owner, name)
-            return removed
+    if removed is not None:
+        db_set_collection(owner, name, items)
 
-    return None
+    _update_collection_context(owner, name)
+    return removed
 
 
-def replace_collection_item(owner: str, name: str, old_item: str, new_item: str):
-    data = _get_store()
-    collections = data["collections"]
-
-    owner = clean_text(owner)
-    name = clean_text(name)
+def replace_collection_item(owner, name, old_item, new_item):
+    owner    = clean_text(owner)
+    name     = clean_text(name)
     old_item = clean_value(old_item)
     new_item = clean_value(new_item)
 
-    for collection in collections:
-        if collection["owner"] == owner and collection["name"] == name:
-            if old_item not in collection["items"]:
-                return None
+    col = db_get_collection(owner, name)
+    if not col or old_item not in col["items"]:
+        return None
 
-            idx = collection["items"].index(old_item)
-            collection["items"][idx] = new_item
+    idx = col["items"].index(old_item)
+    col["items"][idx] = new_item
 
-            seen = set()
-            deduped = []
-            for item in collection["items"]:
-                if item not in seen:
-                    seen.add(item)
-                    deduped.append(item)
+    seen    = set()
+    deduped = []
+    for i in col["items"]:
+        if i not in seen:
+            seen.add(i)
+            deduped.append(i)
 
-            collection["items"] = deduped
-            _save_store()
-            _update_collection_context(owner, name)
-            return collection
-
-    return None
+    db_set_collection(owner, name, deduped)
+    _update_collection_context(owner, name)
+    return db_get_collection(owner, name)
 
 
-def delete_collection(owner: str, name: str):
-    data = _get_store()
-    collections = data["collections"]
-
+def delete_collection(owner, name):
     owner = clean_text(owner)
-    name = clean_text(name)
+    name  = clean_text(name)
 
-    kept = []
-    deleted = None
+    col = db_get_collection(owner, name)
+    if not col:
+        return None
 
-    for collection in collections:
-        if collection["owner"] == owner and collection["name"] == name:
-            deleted = collection
-        else:
-            kept.append(collection)
+    from .store import _conn
+    with _conn() as con:
+        con.execute(
+            "DELETE FROM collections WHERE owner = ? AND name = ?",
+            (owner, name)
+        )
 
-    data["collections"] = kept
-    _save_store()
-
-    if deleted:
-        _update_collection_context(owner, name)
-
-    return deleted
+    _update_collection_context(owner, name)
+    return col
 
 
 # ── ALIASES ──────────────────────────────────────────────────
 
-def add_alias(alias: str, canonical: str):
-    data = _get_store()
-
-    alias = clean_text(alias)
-    canonical = clean_text(canonical)
-
-    data["aliases"][alias] = canonical
-    _save_store()
-
-    return {alias: canonical}
+def add_alias(alias, canonical):
+    return db_set_alias(clean_text(alias), clean_text(canonical))
 
 
 def get_aliases():
-    data = _get_store()
-    return data["aliases"]
+    return db_get_aliases()

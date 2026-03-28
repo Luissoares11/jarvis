@@ -18,11 +18,19 @@ from .memory import (
     add_alias,
     get_aliases,
 )
+from .reasoning import (
+    check_conflict,
+    store_pending_conflict,
+    resolve_pending_conflict,
+    has_pending_conflict,
+    infer_implicit_facts,
+    resolve_transitive,
+)
 from .memory.context import context
 from .memory.resolver import resolve_entity, infer_entity_from_relation_target, push_entity
 from .parser import parse_input
 from .personality import say
-from .relations import REL_NAME, REL_AGE, REL_RELATIONSHIP, relation_display
+from .relations import REL_NAME, REL_AGE, REL_RELATIONSHIP, REL_BIRTHDAY, REL_OCCUPATION, REL_LOCATION, REL_NATIONALITY, REL_NICKNAME, relation_display
 from .semantic import normalize, fuzzy_collection_name
 from .utils import clean_text, title_name
 
@@ -44,16 +52,24 @@ def format_collection(collection):
 def format_entity_profile(entity_name, facts):
     if not facts:
         return say("unknown")
-    
+
     display_name = title_name(entity_name)
-    
+
     if entity_name == "user":
         lines = []
         for fact in facts:
             if fact["relation"] == REL_NAME:
-                lines.append(f"Your name is {fact['object']}.") 
+                lines.append(f"Your name is {fact['object']}.")
             elif fact["relation"] == REL_AGE:
                 lines.append(f"You are {fact['object']} years old.")
+            elif fact["relation"] == REL_BIRTHDAY:
+                lines.append(f"Your birthday is {fact['object']}.")
+            elif fact["relation"] == REL_OCCUPATION:
+                lines.append(f"You are a {fact['object']}.")
+            elif fact["relation"] == REL_LOCATION:
+                lines.append(f"You live in {fact['object']}.")
+            elif fact["relation"] == REL_NATIONALITY:
+                lines.append(f"You are from {fact['object']}.")
             else:
                 lines.append(f"- {relation_display(fact['relation'])}: {fact['object']}")
         return "\n".join(lines)
@@ -73,9 +89,9 @@ def format_entity_profile(entity_name, facts):
     if relationship and age and not other:
         return f"{display_name} is your {relationship} and is {age} years old."
 
-    lines = [f"{entity_name}:"]
+    lines = [f"{display_name}:"]
     for fact in facts:
-        lines.append(f"- {relation_display(fact['relation'])}: {fact['object']}")
+        lines.append(f"  - {relation_display(fact['relation'])}: {fact['object']}")
     return "\n".join(lines)
 
 
@@ -168,19 +184,94 @@ def _handle_batch_store(a):
     return f"{say('confirm')} I will remember that."
 
 def _handle_store_fact(a):
-    subject = resolve_entity(a["subject"])
+    subject  = resolve_entity(a["subject"])
     relation = a["relation"]
-    object_ = a["object"]
-    replace = a.get("replace", False)
+    object_  = a["object"]
+    replace  = a.get("replace", False)
 
+    # conflict detection
+    if replace:
+        conflict = check_conflict(subject, relation, object_)
+        if conflict:
+            store_pending_conflict(subject, relation, object_, conflict["object"])
+            name = "your" if subject == "user" else subject.title() + "'s"
+            return (
+                f"I already have {name} {relation} as '{conflict['object']}'. "
+                f"Do you want me to update it to '{object_}'?"
+            )
+
+    # no conflict — store it
     if replace:
         replace_fact(subject, relation, object_)
     else:
         add_fact(subject, relation, object_)
 
+    # implicit fact inference
+    inferred = infer_implicit_facts(subject, relation, object_)
+    note = ""
+    for inf in inferred:
+        if inf["type"] == "implicit_relationship_age":
+            note = f" I also know they are {inf['object']} years old."
+
     if subject == "user":
-        return f"{say('confirm')} I will remember your {relation_display(relation)}."
-    return f"{say('confirm')} I will remember {subject}'s {relation_display(relation)}."
+        return f"{say('confirm')} I will remember your {relation_display(relation)}.{note}"
+    return f"{say('confirm')} I will remember {subject.title()}'s {relation_display(relation)}.{note}"
+
+def _handle_confirm_conflict(a):
+    if not has_pending_conflict():
+        return say("unknown")
+
+    result = resolve_pending_conflict(confirmed=True)
+    if result == "confirmed":
+        pending = context.get("pending_conflict")  # already cleared, use stored response
+        return f"{say('confirm')} Updated."
+
+    return say("unknown")
+
+
+def _handle_reject_conflict(a):
+    if not has_pending_conflict():
+        return say("unknown")
+
+    resolve_pending_conflict(confirmed=False)
+    return f"{say('confirm')} Keeping the existing value."
+
+
+def _handle_query_fact(a):
+    subject  = resolve_entity(a["subject"])
+    relation = a["relation"]
+
+    facts = resolve_and_find(subject=subject, relation=relation)
+
+    # transitive inference fallback
+    if not facts:
+        transitive = resolve_transitive(subject, relation)
+        if transitive:
+            age = transitive["facts"][0]["object"]
+            real = transitive["subject"].title()
+            via  = transitive["via"]
+            return f"{real} ({via}) is {age} years old."
+
+    if not facts:
+        if subject == "user" and relation == REL_AGE:
+            return "I don't know your age yet."
+        if relation == REL_AGE:
+            return f"I know who {subject} is, but I don't know their age yet."
+        return say("unknown")
+
+    if subject != "user":
+        push_entity(subject)
+
+    context["last_question_type"] = "age" if relation == REL_AGE else None
+
+    if relation == REL_AGE:
+        age = facts[0]["object"]
+        if subject == "user":
+            return f"You are {age} years old."
+        return f"{subject.title()} is {age} years old."
+
+    return format_entity_profile(subject, facts)
+
 
 def _handle_store_person_relation(a):
     subject = clean_text(a["subject"])
@@ -367,6 +458,8 @@ _HANDLERS = {
     "replace_in_last_collection":               _handle_replace_in_last_collection,
     "remove_from_last_collection_by_position":  _handle_remove_from_last_collection_by_position,
     "unknown":                                  _handle_unknown,
+    "confirm_conflict":                         _handle_confirm_conflict,
+    "reject_conflict":                          _handle_reject_conflict,
 }
 
 

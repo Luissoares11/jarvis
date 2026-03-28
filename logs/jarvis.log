@@ -782,3 +782,84 @@ Last intent: recall
 [2026-03-28 01:46:47] [JARVIS] lara soares is your girlfriend and is 21 years old.
 [2026-03-28 01:46:59] [USER] who is Lara Soares
 [2026-03-28 01:46:59] [JARVIS] Lara Soares is your girlfriend and is 21 years old.
+[2026-03-28 17:24:14] [USER] hello
+[2026-03-28 17:24:14] [JARVIS] Good to see you, sir.
+[2026-03-28 17:24:18] [USER] how are you
+[2026-03-28 17:24:18] [JARVIS] I don’t know about that, sir.
+[2026-03-28 17:24:25] [USER] what do you know
+[2026-03-28 17:24:25] [JARVIS] - lara soares
+- my age
+- my name
+- the devices i use
+[2026-03-28 17:24:30] [USER] who do you know
+[2026-03-28 17:24:30] [JARVIS] - lara soares
+[2026-03-28 17:24:35] [USER] thanks
+[2026-03-28 17:24:35] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-28 17:24:43] [USER] Thank you
+[2026-03-28 17:24:43] [JARVIS] I don’t know about that, sir.
+[2026-03-28 17:24:46] [USER] Thanks
+[2026-03-28 17:24:46] [JARVIS] I don’t know about that, sir.
+[2026-03-28 18:11:05] [USER] hi
+[2026-03-28 18:11:05] [JARVIS] Hello, sir.
+[2026-03-28 18:11:10] [USER] what do you know
+[2026-03-28 18:11:10] [JARVIS] - lara soares
+- my age
+- my name
+- the devices i use
+[2026-03-28 18:11:14] [USER] who do you know
+[2026-03-28 18:11:14] [JARVIS] - lara soares
+[2026-03-28 18:11:19] [USER] who is she?
+[2026-03-28 18:11:19] [JARVIS] You are 20 years old.
+Your name is luis soares.
+[2026-03-28 18:11:31] [USER] who is Lara Soares
+[2026-03-28 18:11:31] [JARVIS] Lara Soares is your girlfriend and is 21 years old.
+[2026-03-28 18:11:39] [USER] update her age to 22
+[2026-03-28 18:11:39] [JARVIS] I already have Lara Soares's age as '21'. Do you want me to update it to '22'?
+[2026-03-28 18:11:42] [USER] yes
+[2026-03-28 18:11:42] [JARVIS] Consider it handled. Updated.
+[2026-03-28 18:11:49] [USER] update it to 21
+[2026-03-28 18:11:49] [JARVIS] I don’t know about that, sir.
+[2026-03-28 18:12:00] [USER] update her age to 21 again
+[2026-03-28 18:12:00] [JARVIS] I don’t know about that, sir.
+[2026-03-28 18:12:17] [USER] whats her age?
+[2026-03-28 18:12:17] [JARVIS] Lara Soares is 22 years old.
+[2026-03-28 18:12:23] [USER] update it to 21
+[2026-03-28 18:12:23] [JARVIS] I don’t know about that, sir.
+[2026-03-28 18:12:32] [USER] change her age to 21
+[2026-03-28 18:12:32] [JARVIS] I already have Lara Soares's age as '22'. Do you want me to update it to '21'?
+[2026-03-28 18:12:35] [USER] yes
+[2026-03-28 18:12:35] [JARVIS] Consider it handled. Updated.
+[2026-03-28 18:14:57] [USER] hi
+[2026-03-28 18:14:57] [JARVIS] Hello, sir.
+[2026-03-28 18:15:01] [USER] who do you know
+[2026-03-28 18:15:01] [JARVIS] - lara soares
+[2026-03-28 18:15:08] [USER] who is Lara Soares
+[2026-03-28 18:15:08] [JARVIS] Lara Soares is your girlfriend and is 21 years old.
+[2026-03-28 18:15:15] [USER] update her age to 22
+[2026-03-28 18:15:15] [JARVIS] I already have Lara Soares's age as '21'. Do you want me to update it to '22'?
+[2026-03-28 18:15:17] [USER] yes
+[2026-03-28 18:15:17] [JARVIS] Consider it handled. Updated.
+[2026-03-28 18:15:19] [USER] update her age to 21
+[2026-03-28 18:15:19] [JARVIS] I already have Lara Soares's age as '22'. Do you want me to update it to '21'?
+[2026-03-28 18:15:23] [USER] yes
+[2026-03-28 18:15:23] [JARVIS] Got it. Updated.
+[2026-03-28 18:15:25] [USER] clear
+[2026-03-28 18:15:25] [JARVIS] I don’t know about that, sir.
+[2026-03-28 18:15:31] [USER] who am i?
+[2026-03-28 18:15:31] [JARVIS] Your name is luis soares.
+[2026-03-28 18:32:47] [USER] do you know my birthday?
+[2026-03-28 18:32:47] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-28 18:33:05] [USER] my birthday is on 31, August, 2005
+[2026-03-28 18:33:05] [JARVIS] Consider it handled. I will remember your birthday.
+[2026-03-28 18:33:14] [USER] tell me my birthday
+[2026-03-28 18:33:14] [JARVIS] I don’t know about that, sir.
+[2026-03-28 18:33:21] [USER] who am i?
+[2026-03-28 18:33:21] [JARVIS] Your name is luis soares.
+[2026-03-28 18:33:31] [USER] tell me my birthday
+[2026-03-28 18:33:31] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-28 18:34:30] [USER] when is my birthday?
+[2026-03-28 18:34:30] [JARVIS] Your birthday is on 31 august 2005.
+[2026-03-28 18:34:47] [USER] update it to 31 August
+[2026-03-28 18:34:47] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-28 18:35:07] [USER] change it to 31, August
+[2026-03-28 18:35:07] [JARVIS] I don’t know about that, sir.
