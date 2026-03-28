@@ -1,3 +1,4 @@
+import json as _json
 import sqlite3
 import uuid
 from pathlib import Path
@@ -12,7 +13,7 @@ DB_PATH = Path(MEMORY_FILE).with_suffix(".db")
 def _conn():
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
-    con.execute("PRAGMA journal_mode=WAL")   # safe concurrent reads
+    con.execute("PRAGMA journal_mode=WAL")
     con.execute("PRAGMA foreign_keys=ON")
     try:
         yield con
@@ -33,9 +34,12 @@ def init_db():
                 relation TEXT NOT NULL,
                 object   TEXT NOT NULL
             );
-            CREATE INDEX IF NOT EXISTS idx_facts_subject  ON facts(subject);
-            CREATE INDEX IF NOT EXISTS idx_facts_relation ON facts(relation);
-            CREATE INDEX IF NOT EXISTS idx_facts_subject_relation ON facts(subject, relation);
+            CREATE INDEX IF NOT EXISTS idx_facts_subject
+                ON facts(subject);
+            CREATE INDEX IF NOT EXISTS idx_facts_relation
+                ON facts(relation);
+            CREATE INDEX IF NOT EXISTS idx_facts_subject_relation
+                ON facts(subject, relation);
 
             CREATE TABLE IF NOT EXISTS collections (
                 id    TEXT PRIMARY KEY,
@@ -43,7 +47,8 @@ def init_db():
                 name  TEXT NOT NULL,
                 UNIQUE(owner, name)
             );
-            CREATE INDEX IF NOT EXISTS idx_collections_owner ON collections(owner);
+            CREATE INDEX IF NOT EXISTS idx_collections_owner
+                ON collections(owner);
 
             CREATE TABLE IF NOT EXISTS collection_items (
                 id            TEXT PRIMARY KEY,
@@ -58,24 +63,38 @@ def init_db():
             );
 
             CREATE TABLE IF NOT EXISTS events (
-                id          TEXT PRIMARY KEY,
-                title       TEXT NOT NULL,
-                start_time  TEXT,
-                end_time    TEXT,
-                notes       TEXT,
-                created_at  TEXT DEFAULT (datetime('now'))
+                id         TEXT PRIMARY KEY,
+                title      TEXT NOT NULL,
+                start_time TEXT,
+                end_time   TEXT,
+                notes      TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
             );
 
             CREATE TABLE IF NOT EXISTS computations (
-                id          TEXT PRIMARY KEY,
-                input       TEXT NOT NULL,
-                result      TEXT NOT NULL,
-                created_at  TEXT DEFAULT (datetime('now'))
+                id         TEXT PRIMARY KEY,
+                input      TEXT NOT NULL,
+                result     TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now'))
             );
+
+            CREATE TABLE IF NOT EXISTS learned_patterns (
+                id          TEXT PRIMARY KEY,
+                phrase      TEXT NOT NULL UNIQUE,
+                action_json TEXT NOT NULL,
+                use_count   INTEGER DEFAULT 1,
+                confirmed   INTEGER DEFAULT 0,
+                created_at  TEXT DEFAULT (datetime('now')),
+                last_used   TEXT DEFAULT (datetime('now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_patterns_phrase
+                ON learned_patterns(phrase);
+            CREATE INDEX IF NOT EXISTS idx_patterns_confirmed
+                ON learned_patterns(confirmed);
         """)
 
 
-# ── low level access — used by api.py ────────────────────────
+# ── facts ─────────────────────────────────────────────────────
 
 def db_find_facts(subject=None, relation=None, object_=None):
     query = "SELECT * FROM facts WHERE 1=1"
@@ -137,13 +156,14 @@ def db_get_collection(owner: str, name: str):
         if not row:
             return None
         items = con.execute(
-            "SELECT value FROM collection_items WHERE collection_id = ? ORDER BY position",
+            "SELECT value FROM collection_items "
+            "WHERE collection_id = ? ORDER BY position",
             (row["id"],)
         ).fetchall()
     return {
-        "id": row["id"],
+        "id":    row["id"],
         "owner": row["owner"],
-        "name": row["name"],
+        "name":  row["name"],
         "items": [i["value"] for i in items],
     }
 
@@ -157,7 +177,10 @@ def db_set_collection(owner: str, name: str, items: list[str]):
 
         if row:
             col_id = row["id"]
-            con.execute("DELETE FROM collection_items WHERE collection_id = ?", (col_id,))
+            con.execute(
+                "DELETE FROM collection_items WHERE collection_id = ?",
+                (col_id,)
+            )
         else:
             col_id = str(uuid.uuid4())
             con.execute(
@@ -167,7 +190,8 @@ def db_set_collection(owner: str, name: str, items: list[str]):
 
         for pos, value in enumerate(items):
             con.execute(
-                "INSERT INTO collection_items (id, collection_id, value, position) VALUES (?, ?, ?, ?)",
+                "INSERT INTO collection_items "
+                "(id, collection_id, value, position) VALUES (?, ?, ?, ?)",
                 (str(uuid.uuid4()), col_id, value, pos)
             )
 
@@ -186,13 +210,14 @@ def db_list_collections(owner=None):
         result = []
         for row in rows:
             items = con.execute(
-                "SELECT value FROM collection_items WHERE collection_id = ? ORDER BY position",
+                "SELECT value FROM collection_items "
+                "WHERE collection_id = ? ORDER BY position",
                 (row["id"],)
             ).fetchall()
             result.append({
-                "id": row["id"],
+                "id":    row["id"],
                 "owner": row["owner"],
-                "name": row["name"],
+                "name":  row["name"],
                 "items": [i["value"] for i in items],
             })
     return result
@@ -212,3 +237,61 @@ def db_set_alias(alias: str, canonical: str):
             (alias, canonical)
         )
     return {alias: canonical}
+
+
+# ── learned patterns ──────────────────────────────────────────
+
+def db_save_pattern(phrase: str, action: dict, confirmed: bool = False):
+    with _conn() as con:
+        existing = con.execute(
+            "SELECT id, use_count FROM learned_patterns WHERE phrase = ?",
+            (phrase,)
+        ).fetchone()
+
+        if existing:
+            con.execute(
+                "UPDATE learned_patterns "
+                "SET use_count = ?, last_used = datetime('now'), confirmed = ? "
+                "WHERE phrase = ?",
+                (existing["use_count"] + 1, int(confirmed), phrase)
+            )
+        else:
+            con.execute(
+                "INSERT INTO learned_patterns "
+                "(id, phrase, action_json, confirmed) VALUES (?, ?, ?, ?)",
+                (str(uuid.uuid4()), phrase, _json.dumps(action), int(confirmed))
+            )
+
+
+def db_get_exact_pattern(phrase: str):
+    with _conn() as con:
+        row = con.execute(
+            "SELECT action_json FROM learned_patterns "
+            "WHERE phrase = ? AND confirmed = 1",
+            (phrase,)
+        ).fetchone()
+    return _json.loads(row["action_json"]) if row else None
+
+
+def db_get_all_confirmed_patterns():
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT phrase, action_json FROM learned_patterns WHERE confirmed = 1"
+        ).fetchall()
+    return [(r["phrase"], _json.loads(r["action_json"])) for r in rows]
+
+
+def db_confirm_pattern(phrase: str):
+    with _conn() as con:
+        con.execute(
+            "UPDATE learned_patterns SET confirmed = 1 WHERE phrase = ?",
+            (phrase,)
+        )
+
+
+def db_delete_pattern(phrase: str):
+    with _conn() as con:
+        con.execute(
+            "DELETE FROM learned_patterns WHERE phrase = ?",
+            (phrase,)
+        )

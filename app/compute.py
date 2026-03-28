@@ -16,7 +16,13 @@ SYMBOL_MAP = {"x": x, "y": y, "z": z, "t": t, "n": n}
 def _parse_expr(expr_str: str):
     """Safely parse a math expression string into a sympy expression."""
     try:
-        return parse_expr(expr_str, transformations=TRANSFORMATIONS, local_dict=SYMBOL_MAP)
+        # convert ^ to ** for natural math notation
+        expr_str = expr_str.replace("^", "**")
+        return parse_expr(
+            expr_str,
+            transformations=TRANSFORMATIONS,
+            local_dict=SYMBOL_MAP
+        )
     except Exception as e:
         raise ValueError(f"Could not parse expression: '{expr_str}' — {e}")
 
@@ -193,8 +199,7 @@ def convert_units(value: float, from_unit: str, to_unit: str) -> str:
 # ── graphing ──────────────────────────────────────────────────
 
 def plot_function(expr_str: str, var_str: str = "x",
-                  x_min: float = -10, x_max: float = 10,
-                  save_path: str = None) -> str:
+                  x_min: float = -10, x_max: float = 10) -> str:
     try:
         import matplotlib.pyplot as plt
         import numpy as np
@@ -203,12 +208,17 @@ def plot_function(expr_str: str, var_str: str = "x",
         expr = _parse_expr(expr_str)
         f = sp.lambdify(var, expr, modules=["numpy"])
 
-        x_vals = np.linspace(x_min, x_max, 1000)
+        x_vals = np.linspace(float(x_min), float(x_max), 1000)
 
-        # handle expressions that produce infinity or complex numbers
-        with np.errstate(divide="ignore", invalid="ignore"):
-            y_vals = f(x_vals)
-            y_vals = np.where(np.isfinite(y_vals), y_vals, np.nan)
+        y_vals = []
+        for val in x_vals:
+            try:
+                result = float(f(val))
+                y_vals.append(result if np.isfinite(result) else np.nan)
+            except Exception:
+                y_vals.append(np.nan)
+
+        y_vals = np.array(y_vals, dtype=float)
 
         fig, ax = plt.subplots(figsize=(8, 5))
         ax.plot(x_vals, y_vals, color="#378ADD", linewidth=2)
@@ -220,10 +230,9 @@ def plot_function(expr_str: str, var_str: str = "x",
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
 
-        path = save_path or "data/graph.png"
-        plt.savefig(path, dpi=150)
+        plt.show()       # ← opens live window instead of saving
         plt.close()
 
-        return f"Graph saved to {path}"
+        return f"Here's the graph of f({var_str}) = {expr_str}."
     except Exception as e:
         return f"I couldn't plot that: {e}"

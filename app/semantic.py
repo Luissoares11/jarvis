@@ -14,6 +14,16 @@ _SOCIAL = {
 
 _ORDINALS = {"1": "first", "2": "second", "3": "third"}
 
+_MATH_PREFIXES = (
+    "calculate:", "calc:", "compute:",
+    "derivative of", "differentiate",
+    "integral of", "integrate",
+    "solve:", "solve ",
+    "limit of", "lim of",
+    "plot ", "graph ", "draw ",
+)
+
+
 
 def _ordinal_to_word(match):
     n = match.group(1)
@@ -170,6 +180,10 @@ def normalize(text: str) -> str:
     t = text.lower().strip()
 
     if t in _SOCIAL:
+        return t
+
+    # skip all transformations for math input
+    if any(t.startswith(p) for p in _MATH_PREFIXES):
         return t
 
     t = resolve_followup(t)

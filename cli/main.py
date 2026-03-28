@@ -1,7 +1,10 @@
 from app.core import process_input
+from app.memory.store import init_db
 
 
 def main():
+    init_db()
+
     print("Jarvis:\nHello! I am your assistant. Type 'exit' to quit.\n")
 
     while True:

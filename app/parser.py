@@ -1,6 +1,6 @@
 import re
 
-from .utils import clean_text, clean_value, split_values
+from .utils import clean_text, clean_value, split_values, title_name
 from .relations import (
     REL_NAME, REL_AGE, REL_RELATIONSHIP, REL_BIRTHDAY,
     REL_OCCUPATION, REL_LOCATION, REL_NATIONALITY, REL_NICKNAME
@@ -22,6 +22,7 @@ def parse_input(text: str):
     raw = text.strip()
     raw_lower = raw.lower().strip()
     t = clean_text(raw)
+    math_input = clean_text(raw, math_mode=True)
 
     if not t:
         return {"action": "empty"}
@@ -522,13 +523,11 @@ def parse_input(text: str):
     
     # ── computation ──────────────────────────────────────────
 
-    # explicit prefix: "calculate: 2 + 2"
-    m = re.match(r"^(?:calculate|calc|compute)[:\s]+(.+)$", t)
+    m = re.match(r"^(?:calculate|calc|compute)[:\s]+(.+)$", math_input)
     if m:
         return {"action": "compute_calculate", "expr": m.group(1).strip()}
 
-    # derivative
-    m = re.match(r"^(?:differentiate|derive|derivative of)\s+(.+?)\s+(?:with respect to|wrt)\s+([a-z])(?:\s+(\d+)(?:st|nd|rd|th)?\s+order)?$", t)
+    m = re.match(r"^(?:differentiate|derive|derivative of)\s+(.+?)\s+(?:with respect to|wrt)\s+([a-z])(?:\s+(\d+)(?:st|nd|rd|th)?\s+order)?$", math_input)
     if m:
         return {
             "action": "compute_derivative",
@@ -537,7 +536,7 @@ def parse_input(text: str):
             "order": int(m.group(3)) if m.group(3) else 1,
         }
 
-    m = re.match(r"^(?:what is the |)derivative of\s+(.+?)(?:\s+with respect to\s+([a-z]))?$", t)
+    m = re.match(r"^(?:what is the |)derivative of\s+(.+?)(?:\s+with respect to\s+([a-z]))?$", math_input)
     if m:
         return {
             "action": "compute_derivative",
@@ -546,8 +545,7 @@ def parse_input(text: str):
             "order": 1,
         }
 
-    # integral
-    m = re.match(r"^(?:integrate|integral of)\s+(.+?)\s+(?:from)\s+(.+?)\s+(?:to)\s+(.+?)(?:\s+(?:with respect to|wrt)\s+([a-z]))?$", t)
+    m = re.match(r"^(?:integrate|integral of)\s+(.+?)\s+from\s+(.+?)\s+to\s+(.+?)(?:\s+(?:with respect to|wrt)\s+([a-z]))?$", math_input)
     if m:
         return {
             "action": "compute_integral",
@@ -557,7 +555,7 @@ def parse_input(text: str):
             "var": m.group(4) or "x",
         }
 
-    m = re.match(r"^(?:integrate|integral of)\s+(.+?)(?:\s+(?:with respect to|wrt)\s+([a-z]))?$", t)
+    m = re.match(r"^(?:integrate|integral of)\s+(.+?)(?:\s+(?:with respect to|wrt)\s+([a-z]))?$", math_input)
     if m:
         return {
             "action": "compute_integral",
@@ -567,10 +565,9 @@ def parse_input(text: str):
             "upper": None,
         }
 
-    # limit
-    m = re.match(r"^(?:limit|lim)\s+of\s+(.+?)\s+as\s+([a-z])\s+(?:approaches|->|→)\s+(.+?)(?:\s+(from the )?(left|right))?$", t)
+    m = re.match(r"^(?:limit|lim)\s+of\s+(.+?)\s+as\s+([a-z])\s+(?:approaches|->|→)\s+(.+?)(?:\s+from the\s+)?(left|right)?$", math_input)
     if m:
-        direction = "+" if not m.group(5) or m.group(5) == "right" else "-"
+        direction = "-" if m.group(4) == "left" else "+"
         return {
             "action": "compute_limit",
             "expr": m.group(1).strip(),
@@ -579,8 +576,7 @@ def parse_input(text: str):
             "direction": direction,
         }
 
-    # solve
-    m = re.match(r"^solve[:\s]+(.+?)(?:\s+for\s+([a-z]))?$", t)
+    m = re.match(r"^solve[:\s]+(.+?)(?:\s+for\s+([a-z]))?$", math_input)
     if m:
         return {
             "action": "compute_solve",
@@ -588,7 +584,7 @@ def parse_input(text: str):
             "var": m.group(2) or "x",
         }
 
-    m = re.match(r"^(?:what is the |find the )?(?:solution|roots?) of\s+(.+?)(?:\s+for\s+([a-z]))?$", t)
+    m = re.match(r"^(?:what is the |find the )?(?:solution|roots?) of\s+(.+?)(?:\s+for\s+([a-z]))?$", math_input)
     if m:
         return {
             "action": "compute_solve",
@@ -596,8 +592,7 @@ def parse_input(text: str):
             "var": m.group(2) or "x",
         }
 
-    # unit conversion
-    m = re.match(r"^(?:convert\s+)?(\d+(?:\.\d+)?)\s+(\w+)\s+(?:to|in)\s+(\w+)$", t)
+    m = re.match(r"^(?:convert\s+)?(\d+(?:\.\d+)?)\s+(\w+)\s+(?:to|in)\s+(\w+)$", math_input)
     if m:
         return {
             "action": "compute_convert",
@@ -606,8 +601,7 @@ def parse_input(text: str):
             "to_unit": m.group(3),
         }
 
-    # graph
-    m = re.match(r"^(?:plot|graph|draw|show)\s+(.+?)(?:\s+(?:from|for)\s+(.+?)\s+to\s+(.+?))?$", t)
+    m = re.match(r"^(?:plot|graph|draw|show)\s+(.+?)(?:\s+(?:from|for)\s+(-?[\d\.]+)\s+to\s+(-?[\d\.]+))?$", math_input)
     if m:
         return {
             "action": "compute_plot",
