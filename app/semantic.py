@@ -85,6 +85,14 @@ SYNONYM_MAP = [
     (r"^change (?:it|this|that) to (.+)$",  _resolve_it_update),
     (r"^set (?:it|this|that) to (.+)$",     _resolve_it_update),
     (r"^make (?:it|this|that) (.+)$",       _resolve_it_update),
+
+    # computation synonyms — add to SYNONYM_MAP
+    (r"^what is (\d[\d\s\+\-\*\/\^\(\)\.]+)$",  r"calculate: \1"),
+    (r"^how much is (.+)\??$",                    r"calculate: \1"),
+    (r"^whats (\d[\d\s\+\-\*\/\^\(\)\.]+)\??$",  r"calculate: \1"),
+    (r"^diff (.+) wrt ([a-z])$",                  r"differentiate \1 with respect to \2"),
+    (r"^d/d([a-z]) of (.+)$",                     r"derivative of \2 with respect to \1"),
+    (r"^(\d+(?:\.\d+)?) ([a-z]+) in ([a-z]+)$",  r"\1 \2 to \3"),
 ]
 
 

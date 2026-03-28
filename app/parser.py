@@ -519,5 +519,100 @@ def parse_input(text: str):
             "action": "delete_entity",
             "subject": clean_value(m.group(1)),
         }
+    
+    # ── computation ──────────────────────────────────────────
 
+    # explicit prefix: "calculate: 2 + 2"
+    m = re.match(r"^(?:calculate|calc|compute)[:\s]+(.+)$", t)
+    if m:
+        return {"action": "compute_calculate", "expr": m.group(1).strip()}
+
+    # derivative
+    m = re.match(r"^(?:differentiate|derive|derivative of)\s+(.+?)\s+(?:with respect to|wrt)\s+([a-z])(?:\s+(\d+)(?:st|nd|rd|th)?\s+order)?$", t)
+    if m:
+        return {
+            "action": "compute_derivative",
+            "expr": m.group(1).strip(),
+            "var": m.group(2),
+            "order": int(m.group(3)) if m.group(3) else 1,
+        }
+
+    m = re.match(r"^(?:what is the |)derivative of\s+(.+?)(?:\s+with respect to\s+([a-z]))?$", t)
+    if m:
+        return {
+            "action": "compute_derivative",
+            "expr": m.group(1).strip(),
+            "var": m.group(2) or "x",
+            "order": 1,
+        }
+
+    # integral
+    m = re.match(r"^(?:integrate|integral of)\s+(.+?)\s+(?:from)\s+(.+?)\s+(?:to)\s+(.+?)(?:\s+(?:with respect to|wrt)\s+([a-z]))?$", t)
+    if m:
+        return {
+            "action": "compute_integral",
+            "expr": m.group(1).strip(),
+            "lower": m.group(2).strip(),
+            "upper": m.group(3).strip(),
+            "var": m.group(4) or "x",
+        }
+
+    m = re.match(r"^(?:integrate|integral of)\s+(.+?)(?:\s+(?:with respect to|wrt)\s+([a-z]))?$", t)
+    if m:
+        return {
+            "action": "compute_integral",
+            "expr": m.group(1).strip(),
+            "var": m.group(2) or "x",
+            "lower": None,
+            "upper": None,
+        }
+
+    # limit
+    m = re.match(r"^(?:limit|lim)\s+of\s+(.+?)\s+as\s+([a-z])\s+(?:approaches|->|→)\s+(.+?)(?:\s+(from the )?(left|right))?$", t)
+    if m:
+        direction = "+" if not m.group(5) or m.group(5) == "right" else "-"
+        return {
+            "action": "compute_limit",
+            "expr": m.group(1).strip(),
+            "var": m.group(2),
+            "point": m.group(3).strip(),
+            "direction": direction,
+        }
+
+    # solve
+    m = re.match(r"^solve[:\s]+(.+?)(?:\s+for\s+([a-z]))?$", t)
+    if m:
+        return {
+            "action": "compute_solve",
+            "expr": m.group(1).strip(),
+            "var": m.group(2) or "x",
+        }
+
+    m = re.match(r"^(?:what is the |find the )?(?:solution|roots?) of\s+(.+?)(?:\s+for\s+([a-z]))?$", t)
+    if m:
+        return {
+            "action": "compute_solve",
+            "expr": m.group(1).strip(),
+            "var": m.group(2) or "x",
+        }
+
+    # unit conversion
+    m = re.match(r"^(?:convert\s+)?(\d+(?:\.\d+)?)\s+(\w+)\s+(?:to|in)\s+(\w+)$", t)
+    if m:
+        return {
+            "action": "compute_convert",
+            "value": float(m.group(1)),
+            "from_unit": m.group(2),
+            "to_unit": m.group(3),
+        }
+
+    # graph
+    m = re.match(r"^(?:plot|graph|draw|show)\s+(.+?)(?:\s+(?:from|for)\s+(.+?)\s+to\s+(.+?))?$", t)
+    if m:
+        return {
+            "action": "compute_plot",
+            "expr": m.group(1).strip(),
+            "x_min": m.group(2) or "-10",
+            "x_max": m.group(3) or "10",
+        }
     return {"action": "unknown"}

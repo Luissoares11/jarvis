@@ -863,3 +863,19 @@ Your name is luis soares.
 [2026-03-28 18:34:47] [JARVIS] Hmm… I’m not sure about that yet.
 [2026-03-28 18:35:07] [USER] change it to 31, August
 [2026-03-28 18:35:07] [JARVIS] I don’t know about that, sir.
+[2026-03-28 18:52:06] [USER] calculate 2+2
+[2026-03-28 18:52:06] [JARVIS] 22
+[2026-03-28 18:52:13] [USER] calculate: 2 + 2
+[2026-03-28 18:52:13] [JARVIS] 4
+[2026-03-28 18:53:03] [USER] calculate: (3^2 + 4^2)^0.5
+[2026-03-28 18:53:03] [JARVIS] 134560
+[2026-03-28 18:55:35] [USER] derivative of x^3 + 2x^2 + x
+[2026-03-28 18:55:35] [JARVIS] d/dx [x3 2x2 x] = 36*x**2
+[2026-03-28 18:56:22] [USER] plot x^2
+[2026-03-28 18:56:22] [JARVIS] Graph saved to data/graph.png
+[2026-03-28 18:56:54] [USER] plot x**2
+[2026-03-28 18:56:54] [JARVIS] Graph saved to data/graph.png
+[2026-03-28 18:57:12] [USER] plot x**2
+[2026-03-28 18:57:12] [JARVIS] Graph saved to data/graph.png
+[2026-03-28 18:57:20] [USER] plot x**2
+[2026-03-28 18:57:20] [JARVIS] Graph saved to data/graph.png

@@ -34,6 +34,11 @@ from .relations import REL_NAME, REL_AGE, REL_RELATIONSHIP, REL_BIRTHDAY, REL_OC
 from .semantic import normalize, fuzzy_collection_name
 from .utils import clean_text, title_name
 
+from .compute import (
+    calculate, differentiate, integrate,
+    limit, solve_equation, convert_units, plot_function
+)
+
 
 # ── formatters ───────────────────────────────────────────────
 
@@ -433,7 +438,42 @@ def _handle_unknown(a):
     command_response = run_command(clean_text(raw))
     return command_response or say("unknown")
 
+def _handle_compute_calculate(a):
+    return calculate(a["expr"])
 
+def _handle_compute_derivative(a):
+    return differentiate(a["expr"], a.get("var", "x"), a.get("order", 1))
+
+def _handle_compute_integral(a):
+    return integrate(
+        a["expr"],
+        a.get("var", "x"),
+        a.get("lower"),
+        a.get("upper"),
+    )
+
+def _handle_compute_limit(a):
+    return limit(
+        a["expr"],
+        a.get("var", "x"),
+        a.get("point", "0"),
+        a.get("direction", "+"),
+    )
+
+def _handle_compute_solve(a):
+    return solve_equation(a["expr"], a.get("var", "x"))
+
+def _handle_compute_convert(a):
+    return convert_units(a["value"], a["from_unit"], a["to_unit"])
+
+def _handle_compute_plot(a):
+    try:
+        x_min = float(a.get("x_min", -10))
+        x_max = float(a.get("x_max", 10))
+    except (ValueError, TypeError):
+        x_min, x_max = -10, 10
+
+    return plot_function(a["expr"], x_min=x_min, x_max=x_max)
 # ── registry ─────────────────────────────────────────────────
 
 _HANDLERS = {
@@ -460,6 +500,13 @@ _HANDLERS = {
     "unknown":                                  _handle_unknown,
     "confirm_conflict":                         _handle_confirm_conflict,
     "reject_conflict":                          _handle_reject_conflict,
+    "compute_calculate":   _handle_compute_calculate,
+    "compute_derivative":  _handle_compute_derivative,
+    "compute_integral":    _handle_compute_integral,
+    "compute_limit":       _handle_compute_limit,
+    "compute_solve":       _handle_compute_solve,
+    "compute_convert":     _handle_compute_convert,
+    "compute_plot":        _handle_compute_plot,
 }
 
 
