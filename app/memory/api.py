@@ -6,6 +6,24 @@ from .store import load_store, save_store
 from .resolver import resolve_entity
 from .context import context
 
+# ── in-memory cache ──────────────────────────────────────────
+_cache = None
+
+def _get_store():
+    global _cache
+    if _cache is None:
+        _cache = load_store()
+    return _cache
+
+def _save_store():
+    global _cache
+    save_store(_cache)
+
+def invalidate_cache():
+    global _cache
+    _cache = None
+# ─────────────────────────────────────────────────────────────
+
 
 def _normalize_fact(subject: str, relation: str, object_: str):
     return (
@@ -39,10 +57,10 @@ def _update_collection_context(owner: str, name: str):
     context["last_collection_name"] = clean_text(name)
 
 
-# ---------- FACTS ----------
+# ── FACTS ────────────────────────────────────────────────────
 
 def add_fact(subject: str, relation: str, object_: str):
-    data = load_store()
+    data = _get_store()
     facts = data["facts"]
 
     subject, relation, object_ = _normalize_fact(subject, relation, object_)
@@ -64,14 +82,14 @@ def add_fact(subject: str, relation: str, object_: str):
     ).to_dict()
 
     facts.append(new_fact)
-    save_store(data)
+    _save_store()
 
     _update_fact_context([new_fact])
     return new_fact
 
 
 def find_facts(subject=None, relation=None, object_=None):
-    data = load_store()
+    data = _get_store()
     facts = data["facts"]
 
     subject = clean_text(subject) if subject else None
@@ -94,7 +112,7 @@ def find_facts(subject=None, relation=None, object_=None):
 
 
 def delete_facts(subject=None, relation=None, object_=None):
-    data = load_store()
+    data = _get_store()
     facts = data["facts"]
 
     subject = clean_text(subject) if subject else None
@@ -106,7 +124,6 @@ def delete_facts(subject=None, relation=None, object_=None):
 
     for fact in facts:
         match = True
-
         if subject is not None and fact["subject"] != subject:
             match = False
         if relation is not None and fact["relation"] != relation:
@@ -120,7 +137,7 @@ def delete_facts(subject=None, relation=None, object_=None):
             kept.append(fact)
 
     data["facts"] = kept
-    save_store(data)
+    _save_store()
 
     _update_fact_context(deleted)
     return deleted
@@ -151,17 +168,16 @@ def resolve_and_find(subject=None, relation=None, object_=None):
 
 
 def list_entities():
-    data = load_store()
+    data = _get_store()
     facts = data["facts"]
-
     subjects = sorted(set(f["subject"] for f in facts if f["subject"] != "user"))
     return subjects
 
 
-# ---------- COLLECTIONS ----------
+# ── COLLECTIONS ──────────────────────────────────────────────
 
 def set_collection(owner: str, name: str, items: list[str]):
-    data = load_store()
+    data = _get_store()
     collections = data["collections"]
 
     owner, name, items = _normalize_collection(owner, name, items)
@@ -176,7 +192,7 @@ def set_collection(owner: str, name: str, items: list[str]):
     for collection in collections:
         if collection["owner"] == owner and collection["name"] == name:
             collection["items"] = clean_items
-            save_store(data)
+            _save_store()
             _update_collection_context(owner, name)
             return collection
 
@@ -188,14 +204,14 @@ def set_collection(owner: str, name: str, items: list[str]):
     ).to_dict()
 
     collections.append(new_collection)
-    save_store(data)
+    _save_store()
 
     _update_collection_context(owner, name)
     return new_collection
 
 
 def get_collection(owner: str, name: str):
-    data = load_store()
+    data = _get_store()
     collections = data["collections"]
 
     owner = clean_text(owner)
@@ -210,7 +226,7 @@ def get_collection(owner: str, name: str):
 
 
 def list_collections(owner=None):
-    data = load_store()
+    data = _get_store()
     collections = data["collections"]
 
     if owner is None:
@@ -221,7 +237,7 @@ def list_collections(owner=None):
 
 
 def add_collection_item(owner: str, name: str, item: str):
-    data = load_store()
+    data = _get_store()
     collections = data["collections"]
 
     owner = clean_text(owner)
@@ -232,7 +248,7 @@ def add_collection_item(owner: str, name: str, item: str):
         if collection["owner"] == owner and collection["name"] == name:
             if item not in collection["items"]:
                 collection["items"].append(item)
-                save_store(data)
+                _save_store()
             _update_collection_context(owner, name)
             return collection
 
@@ -240,7 +256,7 @@ def add_collection_item(owner: str, name: str, item: str):
 
 
 def remove_collection_item(owner: str, name: str, item=None, index=None):
-    data = load_store()
+    data = _get_store()
     collections = data["collections"]
 
     owner = clean_text(owner)
@@ -260,7 +276,7 @@ def remove_collection_item(owner: str, name: str, item=None, index=None):
                     removed = item
 
             if removed is not None:
-                save_store(data)
+                _save_store()
 
             _update_collection_context(owner, name)
             return removed
@@ -269,7 +285,7 @@ def remove_collection_item(owner: str, name: str, item=None, index=None):
 
 
 def replace_collection_item(owner: str, name: str, old_item: str, new_item: str):
-    data = load_store()
+    data = _get_store()
     collections = data["collections"]
 
     owner = clean_text(owner)
@@ -285,7 +301,6 @@ def replace_collection_item(owner: str, name: str, old_item: str, new_item: str)
             idx = collection["items"].index(old_item)
             collection["items"][idx] = new_item
 
-            # dedupe while preserving order
             seen = set()
             deduped = []
             for item in collection["items"]:
@@ -294,7 +309,7 @@ def replace_collection_item(owner: str, name: str, old_item: str, new_item: str)
                     deduped.append(item)
 
             collection["items"] = deduped
-            save_store(data)
+            _save_store()
             _update_collection_context(owner, name)
             return collection
 
@@ -302,7 +317,7 @@ def replace_collection_item(owner: str, name: str, old_item: str, new_item: str)
 
 
 def delete_collection(owner: str, name: str):
-    data = load_store()
+    data = _get_store()
     collections = data["collections"]
 
     owner = clean_text(owner)
@@ -318,7 +333,7 @@ def delete_collection(owner: str, name: str):
             kept.append(collection)
 
     data["collections"] = kept
-    save_store(data)
+    _save_store()
 
     if deleted:
         _update_collection_context(owner, name)
@@ -326,20 +341,20 @@ def delete_collection(owner: str, name: str):
     return deleted
 
 
-# ---------- ALIASES ----------
+# ── ALIASES ──────────────────────────────────────────────────
 
 def add_alias(alias: str, canonical: str):
-    data = load_store()
+    data = _get_store()
 
     alias = clean_text(alias)
     canonical = clean_text(canonical)
 
     data["aliases"][alias] = canonical
-    save_store(data)
+    _save_store()
 
     return {alias: canonical}
 
 
 def get_aliases():
-    data = load_store()
+    data = _get_store()
     return data["aliases"]

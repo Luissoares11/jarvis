@@ -40,3 +40,7 @@ def split_values(text: str):
             result.append(value)
 
     return result
+
+def title_name(name: str) -> str:
+    """Capitalise each word in a name, e.g. 'lara soares' → 'Lara Soares'."""
+    return " ".join(word.capitalize() for word in name.split())

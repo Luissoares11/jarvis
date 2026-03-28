@@ -731,3 +731,54 @@ Last intent: recall
 - age: 21
 [2026-03-19 23:48:00] [USER] who is lara soares
 [2026-03-19 23:48:00] [JARVIS] lara soares is your girlfriend and is 21 years old.
+[2026-03-28 01:25:39] [USER] hi
+[2026-03-28 01:25:39] [JARVIS] Good to see you, sir.
+[2026-03-28 01:25:46] [USER] what do you know?
+[2026-03-28 01:25:46] [JARVIS] - lara soares
+- my age
+- my name
+- the devices i use
+[2026-03-28 01:25:56] [USER] who do you know
+[2026-03-28 01:25:56] [JARVIS] - lara soares
+[2026-03-28 01:26:02] [USER] whats my age?
+[2026-03-28 01:26:02] [JARVIS] You are 20 years old.
+[2026-03-28 01:27:49] [USER] hi
+[2026-03-28 01:27:49] [JARVIS] At your service.
+[2026-03-28 01:27:55] [USER] whats my name?
+[2026-03-28 01:27:55] [JARVIS] Your name is luis soares.
+[2026-03-28 01:29:01] [USER] gi
+[2026-03-28 01:29:01] [JARVIS] I don’t know about that, sir.
+[2026-03-28 01:29:03] [USER] thanks
+[2026-03-28 01:29:03] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-28 01:29:05] [USER] clear
+[2026-03-28 01:29:05] [JARVIS] Hmm… I’m not sure about that yet.
+[2026-03-28 01:39:35] [USER] hi
+[2026-03-28 01:39:35] [JARVIS] At your service.
+[2026-03-28 01:39:40] [USER] what do you know
+[2026-03-28 01:39:40] [JARVIS] - lara soares
+- my age
+- my name
+- the devices i use
+[2026-03-28 01:40:00] [USER] tell me the devices i usually use
+[2026-03-28 01:40:00] [JARVIS] - iphone
+- desktop
+- laptop
+[2026-03-28 01:40:11] [USER] can you remove the first?
+[2026-03-28 01:40:11] [JARVIS] I don’t know about that, sir.
+[2026-03-28 01:41:45] [USER] who is lara
+[2026-03-28 01:41:45] [JARVIS] lara soares is your girlfriend and is 21 years old.
+[2026-03-28 01:41:53] [USER] how old is she
+[2026-03-28 01:41:53] [JARVIS] lara soares:
+- age: 21
+[2026-03-28 01:42:04] [USER] what's her age
+[2026-03-28 01:42:04] [JARVIS] lara soares:
+- age: 21
+[2026-03-28 01:42:14] [USER] whats her age
+[2026-03-28 01:42:14] [JARVIS] lara soares:
+- age: 21
+[2026-03-28 01:42:20] [USER] and her name?
+[2026-03-28 01:42:20] [JARVIS] lara soares is your girlfriend and is 21 years old.
+[2026-03-28 01:46:47] [USER] and her name?
+[2026-03-28 01:46:47] [JARVIS] lara soares is your girlfriend and is 21 years old.
+[2026-03-28 01:46:59] [USER] who is Lara Soares
+[2026-03-28 01:46:59] [JARVIS] Lara Soares is your girlfriend and is 21 years old.
