@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from config import RAPIDAPI_KEY
+from config import FOOTBALL_KEY
 
 # ── simple file cache ─────────────────────────────────────────
 # avoids burning API requests for repeated queries
@@ -141,77 +141,90 @@ def get_weather(location: str, forecast_days: int = 1) -> str:
         return f"I couldn't fetch the weather: {e}"
 
 
-# ── football ──────────────────────────────────────────────────
+# ── football-data.org ────────────────────────────────────────
 
-LEAGUE_IDS = {
-    "primeira liga":      94,
-    "portuguese liga":    94,
-    "liga portugal":      94,
-    "champions league":   2,
-    "ucl":                2,
-    "premier league":     39,
-    "epl":                39,
-    "la liga":            140,
+FD_BASE_URL = "https://api.football-data.org/v4"
+
+FD_HEADERS = {
+    "X-Auth-Token": FOOTBALL_KEY
 }
 
-HEADERS = {
-    "X-RapidAPI-Key":  RAPIDAPI_KEY,
-    "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
+LEAGUE_CODES = {
+    "primeira liga": "PPL",
+    "portuguese liga": "PPL",
+    "liga portugal": "PPL",
+    "champions league": "CL",
+    "ucl": "CL",
+    "premier league": "PL",
+    "epl": "PL",
+    "la liga": "PD",
 }
 
-BASE_URL = "https://api-football-v1.p.rapidapi.com/v3"
 
-
-def _current_season() -> int:
-    now = datetime.now()
-    return now.year if now.month >= 7 else now.year - 1
-
-
-def _resolve_league(league_str: str) -> tuple[int, str]:
+def _resolve_league_code(league_str: str) -> tuple[str, str]:
     key = league_str.lower().strip()
-    for name, lid in LEAGUE_IDS.items():
-        if name in key or key in name:
-            return lid, name.title()
+
+    for name, code in LEAGUE_CODES.items():
+        if key == name or key in name or name in key:
+            return code, name.title()
+
     raise ValueError(f"I don't follow that league: {league_str}")
+
+
+def _fd_get(path: str, params: dict | None = None):
+    url = f"{FD_BASE_URL}{path}"
+
+    with httpx.Client(timeout=15) as client:
+        r = client.get(url, headers=FD_HEADERS, params=params)
+        r.raise_for_status()
+        data = r.json()
+
+    # football-data sometimes returns error info in JSON
+    if isinstance(data, dict) and data.get("message") and "matches" not in data and "standings" not in data:
+        raise RuntimeError(data["message"])
+
+    return data
 
 
 def get_fixtures(league_str: str, next_n: int = 5) -> str:
     try:
-        league_id, league_name = _resolve_league(league_str)
-        season = _current_season()
+        code, league_name = _resolve_league_code(league_str)
 
-        cache_key = f"fixtures_{league_id}_{season}_next{next_n}"
+        today = datetime.now().date()
+        future = today + timedelta(days=45)
+
+        cache_key = f"fd_fixtures_{code}_next{next_n}"
         cached = _read_cache(cache_key, max_age_minutes=60)
         if cached:
             return cached
 
-        url = f"{BASE_URL}/fixtures"
-        params = {
-            "league": league_id,
-            "season": season,
-            "next":   next_n,
-        }
+        data = _fd_get(
+            f"/competitions/{code}/matches",
+            {
+                "dateFrom": today.isoformat(),
+                "dateTo": future.isoformat(),
+                "status": "SCHEDULED",
+            }
+        )
 
-        with httpx.Client(timeout=10) as client:
-            r = client.get(url, headers=HEADERS, params=params)
-            r.raise_for_status()
-            data = r.json()
+        matches = data.get("matches", [])[:next_n]
 
-        fixtures = data.get("response", [])
-        if not fixtures:
+        if not matches:
             result = f"No upcoming fixtures found for {league_name}."
         else:
-            lines = [f"Next {len(fixtures)} fixtures — {league_name}:"]
-            for f in fixtures:
-                fixture  = f["fixture"]
-                teams    = f["teams"]
-                date_str = fixture["date"][:10]
-                time_str = fixture["date"][11:16]
-                home     = teams["home"]["name"]
-                away     = teams["away"]["name"]
-                venue    = fixture.get("venue", {}).get("name", "")
-                lines.append(f"  {date_str} {time_str} — {home} vs {away}" +
-                             (f" ({venue})" if venue else ""))
+            lines = [f"Next {len(matches)} fixtures — {league_name}:"]
+            for match in matches:
+                utc_date = match.get("utcDate", "")
+                date_str = utc_date[:10] if utc_date else "Unknown date"
+                time_str = utc_date[11:16] if utc_date else "??:??"
+
+                home = match.get("homeTeam", {}).get("name", "Unknown")
+                away = match.get("awayTeam", {}).get("name", "Unknown")
+                matchday = match.get("matchday")
+
+                extra = f" (Matchday {matchday})" if matchday else ""
+                lines.append(f"  {date_str} {time_str} — {home} vs {away}{extra}")
+
             result = "\n".join(lines)
 
         _write_cache(cache_key, result)
@@ -225,41 +238,45 @@ def get_fixtures(league_str: str, next_n: int = 5) -> str:
 
 def get_results(league_str: str, last_n: int = 5) -> str:
     try:
-        league_id, league_name = _resolve_league(league_str)
-        season = _current_season()
+        code, league_name = _resolve_league_code(league_str)
 
-        cache_key = f"results_{league_id}_{season}_last{last_n}"
+        today = datetime.now().date()
+        past = today - timedelta(days=45)
+
+        cache_key = f"fd_results_{code}_last{last_n}"
         cached = _read_cache(cache_key, max_age_minutes=60)
         if cached:
             return cached
 
-        url = f"{BASE_URL}/fixtures"
-        params = {
-            "league": league_id,
-            "season": season,
-            "last":   last_n,
-            "status": "FT",
-        }
+        data = _fd_get(
+            f"/competitions/{code}/matches",
+            {
+                "dateFrom": past.isoformat(),
+                "dateTo": today.isoformat(),
+                "status": "FINISHED",
+            }
+        )
 
-        with httpx.Client(timeout=10) as client:
-            r = client.get(url, headers=HEADERS, params=params)
-            r.raise_for_status()
-            data = r.json()
+        matches = data.get("matches", [])
+        matches = matches[-last_n:]
 
-        fixtures = data.get("response", [])
-        if not fixtures:
+        if not matches:
             result = f"No recent results found for {league_name}."
         else:
-            lines = [f"Last {len(fixtures)} results — {league_name}:"]
-            for f in reversed(fixtures):
-                teams  = f["teams"]
-                goals  = f["goals"]
-                date   = f["fixture"]["date"][:10]
-                home   = teams["home"]["name"]
-                away   = teams["away"]["name"]
-                hg     = goals["home"]
-                ag     = goals["away"]
-                lines.append(f"  {date} — {home} {hg} – {ag} {away}")
+            lines = [f"Last {len(matches)} results — {league_name}:"]
+            for match in matches:
+                utc_date = match.get("utcDate", "")
+                date_str = utc_date[:10] if utc_date else "Unknown date"
+
+                home = match.get("homeTeam", {}).get("name", "Unknown")
+                away = match.get("awayTeam", {}).get("name", "Unknown")
+
+                full_time = match.get("score", {}).get("fullTime", {})
+                hg = full_time.get("home", "?")
+                ag = full_time.get("away", "?")
+
+                lines.append(f"  {date_str} — {home} {hg} – {ag} {away}")
+
             result = "\n".join(lines)
 
         _write_cache(cache_key, result)
@@ -273,39 +290,42 @@ def get_results(league_str: str, last_n: int = 5) -> str:
 
 def get_standings(league_str: str) -> str:
     try:
-        league_id, league_name = _resolve_league(league_str)
-        season = _current_season()
+        code, league_name = _resolve_league_code(league_str)
 
-        cache_key = f"standings_{league_id}_{season}"
+        cache_key = f"fd_standings_{code}"
         cached = _read_cache(cache_key, max_age_minutes=120)
         if cached:
             return cached
 
-        url = f"{BASE_URL}/standings"
-        params = {"league": league_id, "season": season}
+        data = _fd_get(f"/competitions/{code}/standings")
 
-        with httpx.Client(timeout=10) as client:
-            r = client.get(url, headers=HEADERS, params=params)
-            r.raise_for_status()
-            data = r.json()
+        standings = data.get("standings", [])
+        table = None
 
-        standings = data.get("response", [{}])[0].get("league", {}).get("standings", [[]])[0]
+        for section in standings:
+            if section.get("type") == "TOTAL":
+                table = section.get("table", [])
+                break
 
-        if not standings:
+        if not table:
             result = f"No standings found for {league_name}."
         else:
-            lines = [f"Standings — {league_name} {season}/{season+1}:"]
-            for team in standings[:10]:
-                pos   = team["rank"]
-                name  = team["team"]["name"]
-                pts   = team["points"]
-                played = team["all"]["played"]
-                w, d, l = team["all"]["win"], team["all"]["draw"], team["all"]["lose"]
-                gd    = team["goalsDiff"]
+            lines = [f"Standings — {league_name}:"]
+            for team in table[:10]:
+                pos = team.get("position", "?")
+                name = team.get("team", {}).get("name", "Unknown")
+                pts = team.get("points", "?")
+                played = team.get("playedGames", "?")
+                won = team.get("won", "?")
+                draw = team.get("draw", "?")
+                lost = team.get("lost", "?")
+                gd = team.get("goalDifference", 0)
+
                 lines.append(
                     f"  {pos:2}. {name:<25} {pts}pts  "
-                    f"{played}P {w}W {d}D {l}L  GD{gd:+}"
+                    f"{played}P {won}W {draw}D {lost}L  GD{gd:+}"
                 )
+
             result = "\n".join(lines)
 
         _write_cache(cache_key, result)
@@ -315,3 +335,4 @@ def get_standings(league_str: str) -> str:
         return str(e)
     except Exception as e:
         return f"I couldn't fetch standings: {e}"
+    
