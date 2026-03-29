@@ -3,3 +3,4 @@ uvicorn
 numpy
 sentence-transformers
 torch
+sympy matplotlib

@@ -1,6 +1,6 @@
 import re
 
-from .utils import clean_text, clean_value, split_values
+from .utils import clean_text, clean_value, split_values, title_name
 from .relations import (
     REL_NAME, REL_AGE, REL_RELATIONSHIP, REL_BIRTHDAY,
     REL_OCCUPATION, REL_LOCATION, REL_NATIONALITY, REL_NICKNAME
@@ -22,6 +22,7 @@ def parse_input(text: str):
     raw = text.strip()
     raw_lower = raw.lower().strip()
     t = clean_text(raw)
+    math_input = clean_text(raw, math_mode=True)
 
     if not t:
         return {"action": "empty"}
@@ -36,12 +37,16 @@ def parse_input(text: str):
 
     # ── debug ────────────────────────────────────────────────
 
-    if t in ["jarvis facts", "jarvis aliases", "jarvis context", "jarvis collections"]:
+    if t in ["jarvis facts", "jarvis aliases", "jarvis context", "jarvis collections", "jarvis learned"]:
         return {"action": "debug_command", "name": t}
 
     m = re.match(r"^jarvis dump (.+)$", t)
     if m:
         return {"action": "debug_dump_subject", "subject": clean_value(m.group(1))}
+    
+    if t in ["jarvis facts", "jarvis aliases", "jarvis context", 
+         "jarvis collections", "jarvis learned", "jarvis history"]:
+        return {"action": "debug_command", "name": t}
 
     # ── multi-fact ───────────────────────────────────────────
 
@@ -55,6 +60,9 @@ def parse_input(text: str):
 
     if re.fullmatch(r"(hello|hi|hey|yo)", t):
         return {"action": "greeting"}
+
+    if t in ["how are you", "how are you?", "how are u", "whats up", "sup", "wassup"]:
+        return {"action": "social"}
 
     # ── knowledge ────────────────────────────────────────────
 
@@ -519,5 +527,116 @@ def parse_input(text: str):
             "action": "delete_entity",
             "subject": clean_value(m.group(1)),
         }
+    
+    # ── computation ──────────────────────────────────────────
+
+    m = re.match(r"^(?:calculate|calc|compute)[:\s]+(.+)$", math_input)
+    if m:
+        return {"action": "compute_calculate", "expr": m.group(1).strip()}
+
+    m = re.match(r"^(?:differentiate|derive|derivative of)\s+(.+?)\s+(?:with respect to|wrt)\s+([a-z])(?:\s+(\d+)(?:st|nd|rd|th)?\s+order)?$", math_input)
+    if m:
+        return {
+            "action": "compute_derivative",
+            "expr": m.group(1).strip(),
+            "var": m.group(2),
+            "order": int(m.group(3)) if m.group(3) else 1,
+        }
+
+    m = re.match(r"^(?:what is the |)derivative of\s+(.+?)(?:\s+with respect to\s+([a-z]))?$", math_input)
+    if m:
+        return {
+            "action": "compute_derivative",
+            "expr": m.group(1).strip(),
+            "var": m.group(2) or "x",
+            "order": 1,
+        }
+
+    m = re.match(r"^(?:integrate|integral of)\s+(.+?)\s+from\s+(.+?)\s+to\s+(.+?)(?:\s+(?:with respect to|wrt)\s+([a-z]))?$", math_input)
+    if m:
+        return {
+            "action": "compute_integral",
+            "expr": m.group(1).strip(),
+            "lower": m.group(2).strip(),
+            "upper": m.group(3).strip(),
+            "var": m.group(4) or "x",
+        }
+
+    m = re.match(r"^(?:integrate|integral of)\s+(.+?)(?:\s+(?:with respect to|wrt)\s+([a-z]))?$", math_input)
+    if m:
+        return {
+            "action": "compute_integral",
+            "expr": m.group(1).strip(),
+            "var": m.group(2) or "x",
+            "lower": None,
+            "upper": None,
+        }
+
+    m = re.match(r"^(?:limit|lim)\s+of\s+(.+?)\s+as\s+([a-z])\s+(?:approaches|->|→)\s+(.+?)(?:\s+from the\s+)?(left|right)?$", math_input)
+    if m:
+        direction = "-" if m.group(4) == "left" else "+"
+        return {
+            "action": "compute_limit",
+            "expr": m.group(1).strip(),
+            "var": m.group(2),
+            "point": m.group(3).strip(),
+            "direction": direction,
+        }
+
+    m = re.match(r"^solve[:\s]+(.+?)(?:\s+for\s+([a-z]))?$", math_input)
+    if m:
+        return {
+            "action": "compute_solve",
+            "expr": m.group(1).strip(),
+            "var": m.group(2) or "x",
+        }
+
+    m = re.match(r"^(?:what is the |find the )?(?:solution|roots?) of\s+(.+?)(?:\s+for\s+([a-z]))?$", math_input)
+    if m:
+        return {
+            "action": "compute_solve",
+            "expr": m.group(1).strip(),
+            "var": m.group(2) or "x",
+        }
+
+    m = re.match(r"^(?:convert\s+)?(\d+(?:\.\d+)?)\s+(\w+)\s+(?:to|in)\s+(\w+)$", math_input)
+    if m:
+        return {
+            "action": "compute_convert",
+            "value": float(m.group(1)),
+            "from_unit": m.group(2),
+            "to_unit": m.group(3),
+        }
+
+    m = re.match(r"^(?:plot|graph|draw|show)\s+(.+?)(?:\s+(?:from|for)\s+(-?[\d\.\*a-z]+)\s+to\s+(-?[\d\.\*a-z]+))?$", math_input)
+    if m:
+        return {
+            "action": "compute_plot",
+            "expr":   m.group(1).strip(),
+            "x_min":  m.group(2) or "-10",
+            "x_max":  m.group(3) or "10",
+        }
+    
+    # ── external data ─────────────────────────────────────────────
+
+    m = re.match(r"^(?:what(?:'s| is) the )?weather (?:in|at|for) (.+?)(?:\??)?$", t)
+    if m:
+        return {"action": "external_weather", "location": clean_value(m.group(1)), "days": 1}
+
+    m = re.match(r"^(?:weather )?forecast (?:for|in) (.+?)(?:\??)?$", t)
+    if m:
+        return {"action": "external_weather", "location": clean_value(m.group(1)), "days": 5}
+
+    m = re.match(r"^(?:next|upcoming) (?:fixtures?|games?|matches?) (?:for|in) (.+?)(?:\??)?$", t)
+    if m:
+        return {"action": "external_fixtures", "league": clean_value(m.group(1)), "count": 5}
+
+    m = re.match(r"^(?:last|recent) (?:results?|scores?) (?:for|in) (.+?)(?:\??)?$", t)
+    if m:
+        return {"action": "external_results", "league": clean_value(m.group(1)), "count": 5}
+
+    m = re.match(r"^(?:standings?|table) (?:for|in|of) (.+?)(?:\??)?$", t)
+    if m:
+        return {"action": "external_standings", "league": clean_value(m.group(1))}
 
     return {"action": "unknown"}

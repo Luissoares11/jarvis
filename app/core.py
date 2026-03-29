@@ -26,14 +26,29 @@ from .reasoning import (
     infer_implicit_facts,
     resolve_transitive,
 )
-from .memory.context import context
+from .llm import (
+    interpret,
+    confirm_learning,
+    reject_learning,
+    has_pending_learning,
+)
+from .memory.context import context 
 from .memory.resolver import resolve_entity, infer_entity_from_relation_target, push_entity
 from .parser import parse_input
 from .personality import say
-from .relations import REL_NAME, REL_AGE, REL_RELATIONSHIP, REL_BIRTHDAY, REL_OCCUPATION, REL_LOCATION, REL_NATIONALITY, REL_NICKNAME, relation_display
+from .relations import (
+    REL_NAME, REL_AGE, REL_RELATIONSHIP, REL_BIRTHDAY,
+    REL_OCCUPATION, REL_LOCATION, REL_NATIONALITY, REL_NICKNAME,
+    relation_display,
+)
 from .semantic import normalize, fuzzy_collection_name
 from .utils import clean_text, title_name
+from .compute import (
+    calculate, differentiate, integrate,
+    limit, solve_equation, convert_units, plot_function, plot_implicit
+)
 
+from .external import get_weather, get_fixtures, get_results, get_standings
 
 # ── formatters ───────────────────────────────────────────────
 
@@ -120,15 +135,41 @@ def format_debug_facts():
     all_facts = find_facts()
     if not all_facts:
         return "No facts stored."
-    return "\n".join(f"- {f['subject']} | {f['relation']} | {f['object']}" for f in all_facts)
+    return "\n".join(
+        f"- {f['subject']} | {f['relation']} | {f['object']}" for f in all_facts
+    )
 
+def format_debug_learned():
+    from .memory.store import db_get_all_confirmed_patterns
+    patterns = db_get_all_confirmed_patterns()
+    if not patterns:
+        return "I haven't learned anything yet."
+    lines = []
+    for phrase, action in patterns:
+        lines.append(f"- \"{phrase}\" → {action.get('action')}")
+    return "\n".join(lines)
 
 def format_debug_collections():
     collections = list_collections()
     if not collections:
         return "No collections stored."
-    return "\n".join(f"- {c['owner']} | {c['name']} | {c['items']}" for c in collections)
+    return "\n".join(
+        f"- {c['owner']} | {c['name']} | {c['items']}" for c in collections
+    )
 
+def format_debug_history():
+    from .memory.store import _conn
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT input, result, created_at FROM computations "
+            "ORDER BY created_at DESC LIMIT 20"
+        ).fetchall()
+    if not rows:
+        return "No computation history yet."
+    lines = []
+    for row in rows:
+        lines.append(f"- [{row['created_at'][:16]}] {row['input']} → {row['result']}")
+    return "\n".join(lines)
 
 def format_debug_aliases():
     aliases = get_aliases()
@@ -146,13 +187,43 @@ def _position_to_index(position: str, length: int):
     return mapping.get(position)
 
 
+def _describe_action(action: dict) -> str:
+    a = action.get("action", "")
+    if a == "compute_calculate":
+        return f"calculate {action.get('expr')}"
+    if a == "compute_derivative":
+        return f"differentiate {action.get('expr')} with respect to {action.get('var', 'x')}"
+    if a == "compute_integral":
+        lower = action.get("lower")
+        upper = action.get("upper")
+        if lower and upper:
+            return f"integrate {action.get('expr')} from {lower} to {upper}"
+        return f"integrate {action.get('expr')}"
+    if a == "compute_solve":
+        return f"solve {action.get('expr')}"
+    if a == "compute_plot":
+        return f"plot {action.get('expr')} from {action.get('x_min')} to {action.get('x_max')}"
+    if a == "compute_convert":
+        return f"convert {action.get('value')} {action.get('from_unit')} to {action.get('to_unit')}"
+    if a == "store_fact":
+        return f"remember {action.get('subject')}'s {action.get('relation')} as {action.get('object')}"
+    if a == "query_fact":
+        return f"look up {action.get('subject')}'s {action.get('relation')}"
+    return f"perform action: {a}"
+
+
 # ── handlers ─────────────────────────────────────────────────
 
 def _handle_empty(a):
     return say("empty")
 
+
 def _handle_greeting(a):
     return say("greeting")
+
+def _handle_social(a):
+    return say("social")
+
 
 def _handle_debug_command(a):
     name = a["name"]
@@ -160,7 +231,10 @@ def _handle_debug_command(a):
     if name == "jarvis aliases":     return format_debug_aliases()
     if name == "jarvis context":     return format_debug_context()
     if name == "jarvis collections": return format_debug_collections()
+    if name == "jarvis learned":     return format_debug_learned()
+    if name == "jarvis history": return format_debug_history()
     return say("unknown")
+
 
 def _handle_debug_dump_subject(a):
     subject = resolve_entity(a["subject"])
@@ -169,19 +243,23 @@ def _handle_debug_dump_subject(a):
         return "Nothing stored for that subject."
     return format_entity_profile(subject, facts)
 
+
 def _handle_list_entities(a):
     entities = list_entities()
     if not entities:
         return "I don't know anyone yet."
     return "\n".join(f"- {entity}" for entity in entities)
 
+
 def _handle_list_knowledge(a):
     return format_knowledge()
+
 
 def _handle_batch_store(a):
     for item in a["items"]:
         handle_action(item)
     return f"{say('confirm')} I will remember that."
+
 
 def _handle_store_fact(a):
     subject  = resolve_entity(a["subject"])
@@ -189,7 +267,6 @@ def _handle_store_fact(a):
     object_  = a["object"]
     replace  = a.get("replace", False)
 
-    # conflict detection
     if replace:
         conflict = check_conflict(subject, relation, object_)
         if conflict:
@@ -200,13 +277,11 @@ def _handle_store_fact(a):
                 f"Do you want me to update it to '{object_}'?"
             )
 
-    # no conflict — store it
     if replace:
         replace_fact(subject, relation, object_)
     else:
         add_fact(subject, relation, object_)
 
-    # implicit fact inference
     inferred = infer_implicit_facts(subject, relation, object_)
     note = ""
     for inf in inferred:
@@ -217,25 +292,22 @@ def _handle_store_fact(a):
         return f"{say('confirm')} I will remember your {relation_display(relation)}.{note}"
     return f"{say('confirm')} I will remember {subject.title()}'s {relation_display(relation)}.{note}"
 
-def _handle_confirm_conflict(a):
-    if not has_pending_conflict():
-        return say("unknown")
 
-    result = resolve_pending_conflict(confirmed=True)
-    if result == "confirmed":
-        pending = context.get("pending_conflict")  # already cleared, use stored response
-        return f"{say('confirm')} Updated."
+def _handle_store_person_relation(a):
+    subject = clean_text(a["subject"])
+    relation_value = a["relation_value"]
 
-    return say("unknown")
+    replace_fact(subject, REL_RELATIONSHIP, relation_value)
 
+    first_name = subject.split()[0]
+    add_alias(first_name, subject)
+    add_alias(f"my {relation_value}", subject)
 
-def _handle_reject_conflict(a):
-    if not has_pending_conflict():
-        return say("unknown")
+    if relation_value == "girlfriend":
+        add_alias("my girl", subject)
+        add_alias("gf", subject)
 
-    resolve_pending_conflict(confirmed=False)
-    return f"{say('confirm')} Keeping the existing value."
-
+    return f"{say('confirm')} I will remember {subject}."
 
 def _handle_query_fact(a):
     subject  = resolve_entity(a["subject"])
@@ -247,7 +319,7 @@ def _handle_query_fact(a):
     if not facts:
         transitive = resolve_transitive(subject, relation)
         if transitive:
-            age = transitive["facts"][0]["object"]
+            age  = transitive["facts"][0]["object"]
             real = transitive["subject"].title()
             via  = transitive["via"]
             return f"{real} ({via}) is {age} years old."
@@ -272,65 +344,22 @@ def _handle_query_fact(a):
 
     return format_entity_profile(subject, facts)
 
-
-def _handle_store_person_relation(a):
-    subject = clean_text(a["subject"])
-    relation_value = a["relation_value"]
-
-    replace_fact(subject, REL_RELATIONSHIP, relation_value)
-
-    first_name = subject.split()[0]
-    add_alias(first_name, subject)
-    add_alias(f"my {relation_value}", subject)
-
-    if relation_value == "girlfriend":
-        add_alias("my girl", subject)
-        add_alias("gf", subject)
-
-    return f"{say('confirm')} I will remember {subject}."
-
 def _handle_query_entity(a):
     subject = resolve_entity(a["subject"])
-    facts = resolve_and_find(subject=subject)
+    facts   = resolve_and_find(subject=subject)
 
     if not facts:
         return say("unknown")
 
     push_entity(subject)
-    context["last_entity_facts"] = facts
+    context["last_entity_facts"]  = facts
     context["last_question_type"] = "who"
     return format_entity_profile(subject, facts)
 
-def _handle_query_fact(a):
-    subject = resolve_entity(a["subject"])
-    relation = a["relation"]
-
-    facts = resolve_and_find(subject=subject, relation=relation)
-
-    if not facts:
-        if subject == "user" and relation == REL_AGE:
-            return "I don't know your age yet."
-        if relation == REL_AGE:
-            return f"I know who {subject} is, but I don't know their age yet."
-        return say("unknown")
-
-    if subject != "user":
-        push_entity(subject)
-
-    context["last_question_type"] = "age" if relation == REL_AGE else None
-
-    # clean age response instead of falling into generic profile format
-    if relation == REL_AGE:
-        age = facts[0]["object"]
-        if subject == "user":
-            return f"You are {age} years old."
-        return f"{subject.title()} is {age} years old."
-
-    return format_entity_profile(subject, facts)
 
 def _handle_query_by_relation_value(a):
     relation = a["relation"]
-    object_ = a["object"]
+    object_  = a["object"]
 
     if relation == REL_RELATIONSHIP:
         entity = infer_entity_from_relation_target(object_)
@@ -340,10 +369,11 @@ def _handle_query_by_relation_value(a):
 
     return say("unknown")
 
+
 def _handle_delete_fact(a):
-    subject = resolve_entity(a["subject"])
+    subject  = resolve_entity(a["subject"])
     relation = a["relation"]
-    deleted = delete_facts(subject=subject, relation=relation)
+    deleted  = delete_facts(subject=subject, relation=relation)
 
     if not deleted:
         return "I couldn't find that information."
@@ -351,6 +381,7 @@ def _handle_delete_fact(a):
     if subject == "user":
         return f"{say('confirm')} I forgot your {relation_display(relation)}."
     return f"{say('confirm')} I forgot {subject}'s {relation_display(relation)}."
+
 
 def _handle_delete_entity(a):
     subject = resolve_entity(a["subject"])
@@ -361,16 +392,18 @@ def _handle_delete_entity(a):
 
     return f"{say('confirm')} I forgot '{subject}'."
 
+
 def _handle_set_collection(a):
     set_collection(a["owner"], a["name"], a["items"])
     return f"{say('confirm')} I will remember '{a['name']}'."
 
+
 def _handle_query_collection(a):
     owner = a["owner"]
-    name = a["name"]
+    name  = a["name"]
 
-    known = [c["name"] for c in list_collections(owner=owner)]
-    name = fuzzy_collection_name(name, known)
+    known  = [c["name"] for c in list_collections(owner=owner)]
+    name   = fuzzy_collection_name(name, known)
 
     collection = get_collection(owner, name)
     if not collection:
@@ -378,15 +411,17 @@ def _handle_query_collection(a):
 
     return format_collection(collection)
 
+
 def _handle_delete_collection(a):
     deleted = delete_collection(a["owner"], a["name"])
     if not deleted:
         return say("unknown")
     return f"{say('confirm')} I forgot '{a['name']}'."
 
+
 def _handle_add_to_last_collection(a):
     owner = context.get("last_collection_owner")
-    name = context.get("last_collection_name")
+    name  = context.get("last_collection_name")
 
     if not owner or not name:
         return "I don't know what collection you're referring to."
@@ -394,9 +429,10 @@ def _handle_add_to_last_collection(a):
     add_collection_item(owner, name, a["item"])
     return f"{say('confirm')} Added '{a['item']}'."
 
+
 def _handle_replace_in_last_collection(a):
     owner = context.get("last_collection_owner")
-    name = context.get("last_collection_name")
+    name  = context.get("last_collection_name")
 
     if not owner or not name:
         return "I don't know what collection you're referring to."
@@ -407,9 +443,10 @@ def _handle_replace_in_last_collection(a):
 
     return f"{say('confirm')} Replaced '{a['old']}' with '{a['new']}'."
 
+
 def _handle_remove_from_last_collection_by_position(a):
     owner = context.get("last_collection_owner")
-    name = context.get("last_collection_name")
+    name  = context.get("last_collection_name")
 
     if not owner or not name:
         return "I don't know what collection you're referring to."
@@ -428,17 +465,135 @@ def _handle_remove_from_last_collection_by_position(a):
 
     return f"{say('confirm')} Removed '{removed}'."
 
+
 def _handle_unknown(a):
     raw = a.get("raw", "")
-    command_response = run_command(clean_text(raw))
-    return command_response or say("unknown")
 
+    # try built-in commands first
+    command_response = run_command(clean_text(raw))
+    if command_response:
+        return command_response
+
+    # LLM fallback
+    action = interpret(raw)
+
+    if action.get("_needs_confirmation"):
+        action.pop("_needs_confirmation")
+        context["pending_learning_action"] = action
+        return (
+            f"I think you want me to {_describe_action(action)}. "
+            f"Should I do that and remember it for next time?"
+        )
+
+    if action.get("action") not in ("unknown", None):
+        return handle_action(action)
+
+    return say("unknown")
+
+
+def _handle_confirm_learning(a):
+    # if there's a pending learning confirmation, handle that first
+    if has_pending_learning():
+        confirm_learning()
+        pending_action = context.pop("pending_learning_action", None)
+        if pending_action:
+            result = handle_action(pending_action)
+            return f"{say('confirm')} Got it, I'll remember that.\n{result}"
+        return f"{say('confirm')} Got it, I'll remember that for next time."
+
+    # otherwise fall through to conflict confirmation
+    if has_pending_conflict():
+        result = resolve_pending_conflict(confirmed=True)
+        if result == "confirmed":
+            return f"{say('confirm')} Updated."
+
+    return say("unknown")
+
+
+def _handle_reject_learning(a):
+    if has_pending_learning():
+        reject_learning()
+        context.pop("pending_learning_action", None)
+        return "Okay, I won't remember that pattern."
+
+    if has_pending_conflict():
+        resolve_pending_conflict(confirmed=False)
+        return f"{say('confirm')} Keeping the existing value."
+
+    return say("unknown")
+
+
+def _handle_compute_calculate(a):
+    return calculate(a["expr"])
+
+
+def _handle_compute_derivative(a):
+    return differentiate(a["expr"], a.get("var", "x"), a.get("order", 1))
+
+
+def _handle_compute_integral(a):
+    return integrate(
+        a["expr"],
+        a.get("var", "x"),
+        a.get("lower"),
+        a.get("upper"),
+    )
+
+
+def _handle_compute_limit(a):
+    return limit(
+        a["expr"],
+        a.get("var", "x"),
+        a.get("point", "0"),
+        a.get("direction", "+"),
+    )
+
+
+def _handle_compute_solve(a):
+    return solve_equation(a["expr"], a.get("var", "x"))
+
+
+def _handle_compute_convert(a):
+    return convert_units(a["value"], a["from_unit"], a["to_unit"])
+
+
+def _handle_compute_plot(a):
+    return plot_function(
+        a["expr"],
+        x_min=a.get("x_min", "-10"),
+        x_max=a.get("x_max", "10"),
+    )
+
+def _handle_compute_plot_implicit(a):
+    from .compute import plot_implicit
+    x_range = (
+        float(a.get("x_min", -2)),
+        float(a.get("x_max", 2))
+    )
+    y_range = (
+        float(a.get("y_min", -2)),
+        float(a.get("y_max", 2))
+    )
+    return plot_implicit(a["expr"], x_range=x_range, y_range=y_range)
+
+def _handle_external_weather(a):
+    return get_weather(a["location"], forecast_days=a.get("days", 1))
+
+def _handle_external_fixtures(a):
+    return get_fixtures(a["league"], next_n=a.get("count", 5))
+
+def _handle_external_results(a):
+    return get_results(a["league"], last_n=a.get("count", 5))
+
+def _handle_external_standings(a):
+    return get_standings(a["league"])
 
 # ── registry ─────────────────────────────────────────────────
 
 _HANDLERS = {
     "empty":                                    _handle_empty,
     "greeting":                                 _handle_greeting,
+    "social":                                   _handle_social,
     "debug_command":                            _handle_debug_command,
     "debug_dump_subject":                       _handle_debug_dump_subject,
     "list_entities":                            _handle_list_entities,
@@ -457,9 +612,20 @@ _HANDLERS = {
     "add_to_last_collection":                   _handle_add_to_last_collection,
     "replace_in_last_collection":               _handle_replace_in_last_collection,
     "remove_from_last_collection_by_position":  _handle_remove_from_last_collection_by_position,
-    "unknown":                                  _handle_unknown,
-    "confirm_conflict":                         _handle_confirm_conflict,
-    "reject_conflict":                          _handle_reject_conflict,
+    "confirm_conflict":                         _handle_confirm_learning,
+    "reject_conflict":                          _handle_reject_learning,
+    "compute_calculate":                        _handle_compute_calculate,
+    "compute_derivative":                       _handle_compute_derivative,
+    "compute_integral":                         _handle_compute_integral,
+    "compute_limit":                            _handle_compute_limit,
+    "compute_solve":                            _handle_compute_solve,
+    "compute_convert":                          _handle_compute_convert,
+    "compute_plot":                             _handle_compute_plot,
+    "compute_plot_implicit":                    _handle_compute_plot_implicit,
+    "external_weather":                         _handle_external_weather,
+    "external_fixtures":                        _handle_external_fixtures,
+    "external_results":                         _handle_external_results,
+    "external_standings":                       _handle_external_standings,
 }
 
 
@@ -475,13 +641,28 @@ def handle_action(action_data: dict) -> str:
 
 # ── entry point ──────────────────────────────────────────────
 
-def process_input(user_input: str) -> str:
-    text = normalize(user_input.strip())
+def process_input(user_input: str, ctx: dict = None) -> str:
+    # use provided context or fall back to global (CLI mode)
+    active_ctx = ctx if ctx is not None else context
 
-    action_data = parse_input(text)
-    action_data["raw"] = user_input
+    # temporarily swap global context for this request
+    from . memory import context as ctx_module
+    original = ctx_module.context.copy()
+    ctx_module.context.update(active_ctx)
 
-    response = handle_action(action_data)
+    try:
+        text = normalize(user_input.strip())
+        action_data = parse_input(text)
+        action_data["raw"] = user_input
+        response = handle_action(action_data)
+        # save back any changes made during this request
+        active_ctx.update(ctx_module.context)
+    finally:
+        # restore original if CLI mode
+        if ctx is None:
+            pass  # global context keeps its changes — correct for CLI
+        else:
+            ctx_module.context.update(original)
 
     log_event("user", user_input)
     log_event("jarvis", response)

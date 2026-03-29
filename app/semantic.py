@@ -6,13 +6,33 @@ from .memory.context import context
 
 _SOCIAL = {
     "thanks", "thank you", "ok", "okay", "cool", "got it",
-    "sure", "yes", "no", "nope", "yep", "alright", "nice",
-    "great", "perfect", "awesome", "understood", "fine",
-    "yeah","nah","confirm", "cancel", "correct", 
-    "do it","update it", "keep it", "leave it",
+    "sure", "yes", "yeah", "yep", "no", "nope", "nah",
+    "alright", "nice", "great", "perfect", "awesome",
+    "understood", "fine", "confirm", "cancel", "correct",
+    "do it", "update it", "keep it", "leave it",
+    # social questions
+    "how are you", "how are you?", "how are u", "how r u",
+    "what's up", "whats up", "sup", "wassup",
+    "not bad", "fine thanks", "doing well", "all good",
+    "good morning", "good afternoon", "good evening", "good night",
+    "morning", "evening",
 }
 
 _ORDINALS = {"1": "first", "2": "second", "3": "third"}
+
+_MATH_PREFIXES = (
+    "calculate:", "calc:", "compute:",
+    "derivative of", "differentiate",
+    "integral of", "integrate",
+    "solve:", "solve ",
+    "limit of", "lim of",
+    "plot ", "graph ", "draw ",
+    "weather in", "weather for",
+    "forecast for", "forecast in",
+    "next fixtures", "last results",
+    "standings for", "standings in",
+)
+
 
 
 def _ordinal_to_word(match):
@@ -85,6 +105,24 @@ SYNONYM_MAP = [
     (r"^change (?:it|this|that) to (.+)$",  _resolve_it_update),
     (r"^set (?:it|this|that) to (.+)$",     _resolve_it_update),
     (r"^make (?:it|this|that) (.+)$",       _resolve_it_update),
+
+    # computation synonyms — add to SYNONYM_MAP
+    (r"^what is (\d[\d\s\+\-\*\/\^\(\)\.]+)$",  r"calculate: \1"),
+    (r"^how much is (.+)\??$",                    r"calculate: \1"),
+    (r"^whats (\d[\d\s\+\-\*\/\^\(\)\.]+)\??$",  r"calculate: \1"),
+    (r"^diff (.+) wrt ([a-z])$",                  r"differentiate \1 with respect to \2"),
+    (r"^d/d([a-z]) of (.+)$",                     r"derivative of \2 with respect to \1"),
+    (r"^(\d+(?:\.\d+)?) ([a-z]+) in ([a-z]+)$",  r"\1 \2 to \3"),
+    
+    # external data synonyms
+    (r"^how(?:'s| is) the weather in (.+)\??$",         r"weather in \1"),
+    (r"^whats the weather like in (.+)\??$",             r"weather in \1"),
+    (r"^will it rain in (.+)\??$",                       r"weather in \1"),
+    (r"^show me the (.+) table$",                        r"standings for \1"),
+    (r"^(.+) standings$",                                r"standings for \1"),
+    (r"^(.+) fixtures$",                                 r"next fixtures for \1"),
+    (r"^(.+) results$",                                  r"last results for \1"),
+    (r"^(.+) scores$",                                   r"last results for \1"),
 ]
 
 
@@ -162,6 +200,10 @@ def normalize(text: str) -> str:
     t = text.lower().strip()
 
     if t in _SOCIAL:
+        return t
+
+    # skip all transformations for math input
+    if any(t.startswith(p) for p in _MATH_PREFIXES):
         return t
 
     t = resolve_followup(t)
