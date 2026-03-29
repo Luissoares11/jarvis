@@ -12,5 +12,9 @@ venv/
 *.pt
 *.bin
 
+# OS files
+.DS_Store
+Thumbs.db
+
 # VSCode settings
 .vscode/
