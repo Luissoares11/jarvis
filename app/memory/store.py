@@ -295,3 +295,10 @@ def db_delete_pattern(phrase: str):
             "DELETE FROM learned_patterns WHERE phrase = ?",
             (phrase,)
         )
+
+def db_save_computation(input_str: str, result_str: str):
+    with _conn() as con:
+        con.execute(
+            "INSERT INTO computations (id, input, result) VALUES (?, ?, ?)",
+            (str(uuid.uuid4()), input_str, result_str)
+        )

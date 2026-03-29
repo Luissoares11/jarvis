@@ -32,7 +32,7 @@ from .llm import (
     reject_learning,
     has_pending_learning,
 )
-from .memory.context import context
+from .memory.context import context 
 from .memory.resolver import resolve_entity, infer_entity_from_relation_target, push_entity
 from .parser import parse_input
 from .personality import say
@@ -45,9 +45,10 @@ from .semantic import normalize, fuzzy_collection_name
 from .utils import clean_text, title_name
 from .compute import (
     calculate, differentiate, integrate,
-    limit, solve_equation, convert_units, plot_function,
+    limit, solve_equation, convert_units, plot_function, plot_implicit
 )
 
+from .external import get_weather, get_fixtures, get_results, get_standings
 
 # ── formatters ───────────────────────────────────────────────
 
@@ -138,6 +139,15 @@ def format_debug_facts():
         f"- {f['subject']} | {f['relation']} | {f['object']}" for f in all_facts
     )
 
+def format_debug_learned():
+    from .memory.store import db_get_all_confirmed_patterns
+    patterns = db_get_all_confirmed_patterns()
+    if not patterns:
+        return "I haven't learned anything yet."
+    lines = []
+    for phrase, action in patterns:
+        lines.append(f"- \"{phrase}\" → {action.get('action')}")
+    return "\n".join(lines)
 
 def format_debug_collections():
     collections = list_collections()
@@ -147,6 +157,19 @@ def format_debug_collections():
         f"- {c['owner']} | {c['name']} | {c['items']}" for c in collections
     )
 
+def format_debug_history():
+    from .memory.store import _conn
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT input, result, created_at FROM computations "
+            "ORDER BY created_at DESC LIMIT 20"
+        ).fetchall()
+    if not rows:
+        return "No computation history yet."
+    lines = []
+    for row in rows:
+        lines.append(f"- [{row['created_at'][:16]}] {row['input']} → {row['result']}")
+    return "\n".join(lines)
 
 def format_debug_aliases():
     aliases = get_aliases()
@@ -198,6 +221,9 @@ def _handle_empty(a):
 def _handle_greeting(a):
     return say("greeting")
 
+def _handle_social(a):
+    return say("social")
+
 
 def _handle_debug_command(a):
     name = a["name"]
@@ -205,6 +231,8 @@ def _handle_debug_command(a):
     if name == "jarvis aliases":     return format_debug_aliases()
     if name == "jarvis context":     return format_debug_context()
     if name == "jarvis collections": return format_debug_collections()
+    if name == "jarvis learned":     return format_debug_learned()
+    if name == "jarvis history": return format_debug_history()
     return say("unknown")
 
 
@@ -281,13 +309,13 @@ def _handle_store_person_relation(a):
 
     return f"{say('confirm')} I will remember {subject}."
 
-
 def _handle_query_fact(a):
     subject  = resolve_entity(a["subject"])
     relation = a["relation"]
 
     facts = resolve_and_find(subject=subject, relation=relation)
 
+    # transitive inference fallback
     if not facts:
         transitive = resolve_transitive(subject, relation)
         if transitive:
@@ -315,7 +343,6 @@ def _handle_query_fact(a):
         return f"{subject.title()} is {age} years old."
 
     return format_entity_profile(subject, facts)
-
 
 def _handle_query_entity(a):
     subject = resolve_entity(a["subject"])
@@ -531,20 +558,42 @@ def _handle_compute_convert(a):
 
 
 def _handle_compute_plot(a):
-    try:
-        x_min = float(a.get("x_min", -10))
-        x_max = float(a.get("x_max", 10))
-    except (ValueError, TypeError):
-        x_min, x_max = -10, 10
+    return plot_function(
+        a["expr"],
+        x_min=a.get("x_min", "-10"),
+        x_max=a.get("x_max", "10"),
+    )
 
-    return plot_function(a["expr"], x_min=x_min, x_max=x_max)
+def _handle_compute_plot_implicit(a):
+    from .compute import plot_implicit
+    x_range = (
+        float(a.get("x_min", -2)),
+        float(a.get("x_max", 2))
+    )
+    y_range = (
+        float(a.get("y_min", -2)),
+        float(a.get("y_max", 2))
+    )
+    return plot_implicit(a["expr"], x_range=x_range, y_range=y_range)
 
+def _handle_external_weather(a):
+    return get_weather(a["location"], forecast_days=a.get("days", 1))
+
+def _handle_external_fixtures(a):
+    return get_fixtures(a["league"], next_n=a.get("count", 5))
+
+def _handle_external_results(a):
+    return get_results(a["league"], last_n=a.get("count", 5))
+
+def _handle_external_standings(a):
+    return get_standings(a["league"])
 
 # ── registry ─────────────────────────────────────────────────
 
 _HANDLERS = {
     "empty":                                    _handle_empty,
     "greeting":                                 _handle_greeting,
+    "social":                                   _handle_social,
     "debug_command":                            _handle_debug_command,
     "debug_dump_subject":                       _handle_debug_dump_subject,
     "list_entities":                            _handle_list_entities,
@@ -572,6 +621,11 @@ _HANDLERS = {
     "compute_solve":                            _handle_compute_solve,
     "compute_convert":                          _handle_compute_convert,
     "compute_plot":                             _handle_compute_plot,
+    "compute_plot_implicit":                    _handle_compute_plot_implicit,
+    "external_weather":                         _handle_external_weather,
+    "external_fixtures":                        _handle_external_fixtures,
+    "external_results":                         _handle_external_results,
+    "external_standings":                       _handle_external_standings,
 }
 
 
@@ -587,13 +641,28 @@ def handle_action(action_data: dict) -> str:
 
 # ── entry point ──────────────────────────────────────────────
 
-def process_input(user_input: str) -> str:
-    text = normalize(user_input.strip())
+def process_input(user_input: str, ctx: dict = None) -> str:
+    # use provided context or fall back to global (CLI mode)
+    active_ctx = ctx if ctx is not None else context
 
-    action_data = parse_input(text)
-    action_data["raw"] = user_input
+    # temporarily swap global context for this request
+    from . memory import context as ctx_module
+    original = ctx_module.context.copy()
+    ctx_module.context.update(active_ctx)
 
-    response = handle_action(action_data)
+    try:
+        text = normalize(user_input.strip())
+        action_data = parse_input(text)
+        action_data["raw"] = user_input
+        response = handle_action(action_data)
+        # save back any changes made during this request
+        active_ctx.update(ctx_module.context)
+    finally:
+        # restore original if CLI mode
+        if ctx is None:
+            pass  # global context keeps its changes — correct for CLI
+        else:
+            ctx_module.context.update(original)
 
     log_event("user", user_input)
     log_event("jarvis", response)

@@ -1,6 +1,9 @@
 import json
 import re
 from difflib import get_close_matches
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from .memory.store import (
     db_save_pattern,
@@ -32,6 +35,13 @@ Computation:
 {"action": "compute_solve", "expr": "equation or expression", "var": "x"}
 {"action": "compute_convert", "value": 100, "from_unit": "km", "to_unit": "miles"}
 {"action": "compute_plot", "expr": "expression", "x_min": "-10", "x_max": "10"}
+{"action": "compute_plot_implicit", "expr": "expression in x and y", "x_min": "-2", "x_max": "2", "y_min": "-2", "y_max": "2"}
+
+External data:
+{"action": "external_weather", "location": "city name", "days": 1}
+{"action": "external_fixtures", "league": "league name", "count": 5}
+{"action": "external_results", "league": "league name", "count": 5}
+{"action": "external_standings", "league": "league name"}
 
 General:
 {"action": "greeting"}
@@ -84,40 +94,48 @@ def _fuzzy_match(phrase: str, confirmed_patterns: list) -> dict | None:
     return None, None
 
 
-def interpret(user_input: str) -> dict:
-    """
-    Main entry point. Try learned patterns first, then LLM.
-    Returns action dict with optional learning metadata.
-    """
-    phrase = user_input.lower().strip()
+_FILLER = re.compile(
+    r"^(can you|could you|please|jarvis|hey|would you|i want you to|i need you to)\s+",
+    re.IGNORECASE
+)
 
-    # 1 — exact match in confirmed patterns
-    exact = db_get_exact_pattern(phrase)
+def _strip_filler(text: str) -> str:
+    """Remove conversational filler so 'can you plot x' matches 'plot x'."""
+    return _FILLER.sub("", text).strip()
+
+
+def interpret(user_input: str) -> dict:
+    phrase = user_input.lower().strip()
+    stripped = _strip_filler(phrase)
+
+    # 1 — exact match (try both original and stripped)
+    exact = db_get_exact_pattern(phrase) or db_get_exact_pattern(stripped)
     if exact:
         return exact
 
-    # 2 — fuzzy match in confirmed patterns
+    # 2 — fuzzy match on stripped phrase
     all_patterns = db_get_all_confirmed_patterns()
-    fuzzy_action, matched_phrase = _fuzzy_match(phrase, all_patterns)
+    fuzzy_action, matched_phrase = _fuzzy_match(stripped, all_patterns)
     if fuzzy_action:
-        # store this exact phrase as a variant too
-        db_save_pattern(phrase, fuzzy_action, confirmed=True)
-        return fuzzy_action
+        action = _call_llm(user_input)
+        if action.get("action") != "unknown":
+            db_save_pattern(phrase, action, confirmed=True)
+            db_save_pattern(stripped, action, confirmed=True)
+            return action
 
-    # 3 — LLM fallback
+    # 3 — LLM fallback with confirmation
     action = _call_llm(user_input)
 
     if action.get("action") != "unknown":
-        # store pending — needs user confirmation
         db_save_pattern(phrase, action, confirmed=False)
+        db_save_pattern(stripped, action, confirmed=False)
         context["pending_learning"] = {
-            "phrase":  phrase,
-            "action":  action,
+            "phrase": phrase,
+            "action": action,
         }
         action["_needs_confirmation"] = True
 
     return action
-
 
 def confirm_learning():
     """User confirmed — store the pending pattern permanently."""

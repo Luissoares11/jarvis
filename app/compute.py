@@ -5,6 +5,8 @@ from sympy.parsing.sympy_parser import (
     standard_transformations,
     implicit_multiplication_application,
 )
+from app.memory.store import db_save_computation
+
 
 TRANSFORMATIONS = standard_transformations + (implicit_multiplication_application,)
 
@@ -198,17 +200,38 @@ def convert_units(value: float, from_unit: str, to_unit: str) -> str:
 
 # ── graphing ──────────────────────────────────────────────────
 
+def _parse_range_value(s: str) -> float:
+    """Parse a range boundary that may contain pi, e, etc."""
+    s = s.strip().replace("^", "**")
+
+    replacements = {
+        "pi":  str(float(sp.pi)),
+        "tau": str(float(2 * sp.pi)),
+        "e":   str(float(sp.E)),
+        "inf": "1e9",
+    }
+    for name, val in replacements.items():
+        s = re.sub(rf"\b{name}\b", val, s)
+
+    try:
+        return float(_parse_expr(s).evalf())
+    except Exception:
+        return float(s)
+    
 def plot_function(expr_str: str, var_str: str = "x",
-                  x_min: float = -10, x_max: float = 10) -> str:
+                  x_min="-10", x_max="10") -> str:
     try:
         import matplotlib.pyplot as plt
         import numpy as np
 
-        var = sp.Symbol(var_str)
-        expr = _parse_expr(expr_str)
-        f = sp.lambdify(var, expr, modules=["numpy"])
+        x_min_val = _parse_range_value(str(x_min))
+        x_max_val = _parse_range_value(str(x_max))
 
-        x_vals = np.linspace(float(x_min), float(x_max), 1000)
+        var  = sp.Symbol(var_str)
+        expr = _parse_expr(expr_str)
+        f    = sp.lambdify(var, expr, modules=["numpy"])
+
+        x_vals = np.linspace(x_min_val, x_max_val, 1000)
 
         y_vals = []
         for val in x_vals:
@@ -230,9 +253,43 @@ def plot_function(expr_str: str, var_str: str = "x",
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
 
-        plt.show()       # ← opens live window instead of saving
+        plt.show()
         plt.close()
 
         return f"Here's the graph of f({var_str}) = {expr_str}."
     except Exception as e:
         return f"I couldn't plot that: {e}"
+    
+def plot_implicit(expr_str: str, x_range=(-2, 2), y_range=(-2, 2)) -> str:
+    try:
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        x_sym, y_sym = sp.symbols("x y")
+        expr = _parse_expr(expr_str)
+        f = sp.lambdify((x_sym, y_sym), expr, modules=["numpy"])
+
+        x_vals = np.linspace(*x_range, 1000)
+        y_vals = np.linspace(*y_range, 1000)
+        X, Y = np.meshgrid(x_vals, y_vals)
+
+        with np.errstate(invalid="ignore"):
+            Z = f(X, Y)
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.contour(X, Y, Z, levels=[0], colors="#378ADD", linewidths=2)
+        ax.axhline(0, color="gray", linewidth=0.8, linestyle="--")
+        ax.axvline(0, color="gray", linewidth=0.8, linestyle="--")
+        ax.set_title(f"{expr_str} = 0", fontsize=11)
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_aspect("equal")
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+
+        plt.show()
+        plt.close()
+
+        return f"Here's the implicit plot of {expr_str} = 0."
+    except Exception as e:
+        return f"I couldn't plot that: {e}"    

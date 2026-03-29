@@ -10,6 +10,7 @@ DATA_DIR.mkdir(exist_ok=True)
 
 MEMORY_FILE = "data/memory"
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 
 HOST = "0.0.0.0"
 PORT = 8000

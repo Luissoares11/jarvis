@@ -37,12 +37,16 @@ def parse_input(text: str):
 
     # ── debug ────────────────────────────────────────────────
 
-    if t in ["jarvis facts", "jarvis aliases", "jarvis context", "jarvis collections"]:
+    if t in ["jarvis facts", "jarvis aliases", "jarvis context", "jarvis collections", "jarvis learned"]:
         return {"action": "debug_command", "name": t}
 
     m = re.match(r"^jarvis dump (.+)$", t)
     if m:
         return {"action": "debug_dump_subject", "subject": clean_value(m.group(1))}
+    
+    if t in ["jarvis facts", "jarvis aliases", "jarvis context", 
+         "jarvis collections", "jarvis learned", "jarvis history"]:
+        return {"action": "debug_command", "name": t}
 
     # ── multi-fact ───────────────────────────────────────────
 
@@ -56,6 +60,9 @@ def parse_input(text: str):
 
     if re.fullmatch(r"(hello|hi|hey|yo)", t):
         return {"action": "greeting"}
+
+    if t in ["how are you", "how are you?", "how are u", "whats up", "sup", "wassup"]:
+        return {"action": "social"}
 
     # ── knowledge ────────────────────────────────────────────
 
@@ -601,12 +608,35 @@ def parse_input(text: str):
             "to_unit": m.group(3),
         }
 
-    m = re.match(r"^(?:plot|graph|draw|show)\s+(.+?)(?:\s+(?:from|for)\s+(-?[\d\.]+)\s+to\s+(-?[\d\.]+))?$", math_input)
+    m = re.match(r"^(?:plot|graph|draw|show)\s+(.+?)(?:\s+(?:from|for)\s+(-?[\d\.\*a-z]+)\s+to\s+(-?[\d\.\*a-z]+))?$", math_input)
     if m:
         return {
             "action": "compute_plot",
-            "expr": m.group(1).strip(),
-            "x_min": m.group(2) or "-10",
-            "x_max": m.group(3) or "10",
+            "expr":   m.group(1).strip(),
+            "x_min":  m.group(2) or "-10",
+            "x_max":  m.group(3) or "10",
         }
+    
+    # ── external data ─────────────────────────────────────────────
+
+    m = re.match(r"^(?:what(?:'s| is) the )?weather (?:in|at|for) (.+?)(?:\??)?$", t)
+    if m:
+        return {"action": "external_weather", "location": clean_value(m.group(1)), "days": 1}
+
+    m = re.match(r"^(?:weather )?forecast (?:for|in) (.+?)(?:\??)?$", t)
+    if m:
+        return {"action": "external_weather", "location": clean_value(m.group(1)), "days": 5}
+
+    m = re.match(r"^(?:next|upcoming) (?:fixtures?|games?|matches?) (?:for|in) (.+?)(?:\??)?$", t)
+    if m:
+        return {"action": "external_fixtures", "league": clean_value(m.group(1)), "count": 5}
+
+    m = re.match(r"^(?:last|recent) (?:results?|scores?) (?:for|in) (.+?)(?:\??)?$", t)
+    if m:
+        return {"action": "external_results", "league": clean_value(m.group(1)), "count": 5}
+
+    m = re.match(r"^(?:standings?|table) (?:for|in|of) (.+?)(?:\??)?$", t)
+    if m:
+        return {"action": "external_standings", "league": clean_value(m.group(1))}
+
     return {"action": "unknown"}
