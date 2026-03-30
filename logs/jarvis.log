@@ -1224,3 +1224,33 @@ I don't follow that league: Benfica
 - pending_learning_action: None
 [2026-03-30 00:26:16] [USER] nice
 [2026-03-30 00:26:16] [JARVIS] I think you want me to perform action: greeting. Should I do that and remember it for next time?
+[2026-03-30 22:33:10] [USER] weather in Porto
+[2026-03-30 22:33:10] [JARVIS] Currently in Porto: 14.8°C, clear sky. Wind 4.2 km/h, humidity 75%.
+[2026-03-30 22:33:17] [USER] weather in London
+[2026-03-30 22:33:17] [JARVIS] Currently in London: 9.7°C, overcast. Wind 10.4 km/h, humidity 58%.
+[2026-03-30 22:33:27] [USER] next fixture for premier league
+[2026-03-30 22:33:27] [JARVIS] Next 5 fixtures — Premier League:
+  2026-04-10 19:00 — West Ham United FC vs Wolverhampton Wanderers FC (Matchday 32)
+  2026-04-11 11:30 — Arsenal FC vs AFC Bournemouth (Matchday 32)
+  2026-04-11 14:00 — Brentford FC vs Everton FC (Matchday 32)
+  2026-04-11 14:00 — Burnley FC vs Brighton & Hove Albion FC (Matchday 32)
+  2026-04-11 16:30 — Liverpool FC vs Fulham FC (Matchday 32)
+[2026-03-30 22:33:41] [USER] last results for champions league
+[2026-03-30 22:33:41] [JARVIS] Last 5 results — Champions League:
+  2026-03-17 — Arsenal FC 2 – 0 Bayer 04 Leverkusen
+  2026-03-18 — FC Barcelona 7 – 2 Newcastle United FC
+  2026-03-18 — Liverpool FC 4 – 0 Galatasaray SK
+  2026-03-18 — FC Bayern München 4 – 1 Atalanta BC
+  2026-03-18 — Tottenham Hotspur FC 3 – 2 Club Atlético de Madrid
+[2026-03-30 22:33:49] [USER] standings for la liga
+[2026-03-30 22:33:49] [JARVIS] Standings — La Liga:
+   1. FC Barcelona              73pts  29P 24W 1D 4L  GD+50
+   2. Real Madrid CF            69pts  29P 22W 3D 4L  GD+37
+   3. Villarreal CF             58pts  29P 18W 4D 7L  GD+20
+   4. Club Atlético de Madrid   57pts  29P 17W 6D 6L  GD+21
+   5. Real Betis Balompié       44pts  29P 11W 11D 7L  GD+7
+   6. RC Celta de Vigo          41pts  29P 10W 11D 8L  GD+6
+   7. Real Sociedad de Fútbol   38pts  29P 10W 8D 11L  GD-1
+   8. Getafe CF                 38pts  29P 11W 5D 13L  GD-6
+   9. Athletic Club             38pts  29P 11W 5D 13L  GD-9
+  10. CA Osasuna                37pts  29P 10W 7D 12L  GD-1
