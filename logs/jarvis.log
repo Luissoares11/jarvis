@@ -1254,3 +1254,33 @@ I don't follow that league: Benfica
    8. Getafe CF                 38pts  29P 11W 5D 13L  GD-6
    9. Athletic Club             38pts  29P 11W 5D 13L  GD-9
   10. CA Osasuna                37pts  29P 10W 7D 12L  GD-1
+[2026-03-30 23:00:11] [USER] add task: finish physics assignment
+[2026-03-30 23:00:11] [JARVIS] I don't know what collection you're referring to.
+[2026-03-30 23:00:29] [USER] add task: buy groceries
+[2026-03-30 23:00:29] [JARVIS] I don't know what collection you're referring to.
+[2026-03-30 23:00:48] [USER] show my tasks
+[2026-03-30 23:00:48] [JARVIS] Here's the graph of f(x) = my tasks.
+[2026-03-30 23:01:06] [USER] remind me to call mom at 18:00
+[2026-03-30 23:01:06] [JARVIS] That time has already passed, sir.
+[2026-03-30 23:01:20] [USER] remind me to call mom at 23:10
+[2026-03-30 23:01:20] [JARVIS] Reminder set: 'call mom' at 23:10 on 30 Mar.
+[2026-03-30 23:01:31] [USER] show reminders
+[2026-03-30 23:01:31] [JARVIS] Here's the graph of f(x) = reminders.
+[2026-03-30 23:01:44] [USER] set a timer for 10 minutes
+[2026-03-30 23:01:44] [JARVIS] Timer set for 10m: 'Timer'.
+[2026-03-30 23:01:58] [USER] set a timer for 10 minutes for pasta
+[2026-03-30 23:01:58] [JARVIS] Timer set for 10m: 'pasta'.
+[2026-03-30 23:02:14] [USER] wake me up at 07:30
+[2026-03-30 23:02:14] [JARVIS] That time has already passed, sir.
+[2026-03-30 23:03:00] [USER] add exam on 22/04/2026 at 16:30
+[2026-03-30 23:03:00] [JARVIS] I don't know what collection you're referring to.
+[2026-03-30 23:03:12] [USER] show my events
+[2026-03-30 23:03:12] [JARVIS] Here's the graph of f(x) = my events.
+[2026-03-30 23:10:07] [USER] 
+[2026-03-30 23:10:07] [JARVIS] Ready when you are, sir.
+[2026-03-30 23:10:12] [USER] clear
+[2026-03-30 23:10:12] [JARVIS] I don't have that information.
+[2026-03-30 23:10:45] [USER] add eletromagnetism test on 22/04/2026 at 16:30
+[2026-03-30 23:10:45] [JARVIS] I don't know what collection you're referring to.
+[2026-03-30 23:11:30] [USER] add exam on 22/04/2026 at 16:30
+[2026-03-30 23:11:30] [JARVIS] I couldn't understand the date: 22042026

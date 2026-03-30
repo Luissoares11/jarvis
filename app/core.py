@@ -50,6 +50,13 @@ from .compute import (
 
 from .external import get_weather, get_fixtures, get_results, get_standings
 
+from .actions import (
+    add_todo, list_todos, complete_todo, delete_todo,
+    add_reminder, list_reminders, load_pending_reminders,
+    set_timer, set_alarm,
+    add_calendar_event, list_events,
+)
+
 # ── formatters ───────────────────────────────────────────────
 
 def format_fact_list(facts):
@@ -588,6 +595,42 @@ def _handle_external_results(a):
 def _handle_external_standings(a):
     return get_standings(a["league"])
 
+def _handle_action_add_todo(a):
+    return add_todo(a["task"])
+
+def _handle_action_list_todos(a):
+    return list_todos()
+
+def _handle_action_complete_todo(a):
+    return complete_todo(a["ref"])
+
+def _handle_action_delete_todo(a):
+    return delete_todo(a["ref"])
+
+def _handle_action_add_reminder(a):
+    return add_reminder(a["message"], a["time"], a.get("date", "today"))
+
+def _handle_action_list_reminders(a):
+    return list_reminders()
+
+def _handle_action_set_timer(a):
+    return set_timer(a["duration"], a.get("label", "Timer"))
+
+def _handle_action_set_alarm(a):
+    return set_alarm(a["time"])
+
+def _handle_action_add_event(a):
+    return add_calendar_event(
+        title=a.get("title", a.get("event_type", "Event")),
+        date_str=a["date"],
+        time_str=a.get("time", "09:00"),
+        event_type=a.get("event_type", "other"),
+        notes=a.get("notes", ""),
+    )
+
+def _handle_action_list_events(a):
+    return list_events(days_ahead=a.get("days", 7))
+
 # ── registry ─────────────────────────────────────────────────
 
 _HANDLERS = {
@@ -626,6 +669,16 @@ _HANDLERS = {
     "external_fixtures":                        _handle_external_fixtures,
     "external_results":                         _handle_external_results,
     "external_standings":                       _handle_external_standings,
+    "action_add_todo":                          _handle_action_add_todo,
+    "action_list_todos":                        _handle_action_list_todos,
+    "action_complete_todo":                     _handle_action_complete_todo,
+    "action_delete_todo":                       _handle_action_delete_todo,
+    "action_add_reminder":                      _handle_action_add_reminder,
+    "action_list_reminders":                    _handle_action_list_reminders,
+    "action_set_timer":                         _handle_action_set_timer,
+    "action_set_alarm":                         _handle_action_set_alarm,
+    "action_add_event":                         _handle_action_add_event,
+    "action_list_events":                       _handle_action_list_events,   
 }
 
 
@@ -642,11 +695,9 @@ def handle_action(action_data: dict) -> str:
 # ── entry point ──────────────────────────────────────────────
 
 def process_input(user_input: str, ctx: dict = None) -> str:
-    # use provided context or fall back to global (CLI mode)
     active_ctx = ctx if ctx is not None else context
 
-    # temporarily swap global context for this request
-    from . memory import context as ctx_module
+    from .memory import context as ctx_module
     original = ctx_module.context.copy()
     ctx_module.context.update(active_ctx)
 
@@ -655,12 +706,10 @@ def process_input(user_input: str, ctx: dict = None) -> str:
         action_data = parse_input(text)
         action_data["raw"] = user_input
         response = handle_action(action_data)
-        # save back any changes made during this request
         active_ctx.update(ctx_module.context)
     finally:
-        # restore original if CLI mode
         if ctx is None:
-            pass  # global context keeps its changes — correct for CLI
+            pass
         else:
             ctx_module.context.update(original)
 

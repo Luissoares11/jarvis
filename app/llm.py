@@ -43,6 +43,17 @@ External data:
 {"action": "external_results", "league": "league name", "count": 5}
 {"action": "external_standings", "league": "league name"}
 
+Actions:
+{"action": "action_add_todo", "task": "task description"}
+{"action": "action_list_todos"}
+{"action": "action_complete_todo", "ref": "task name or number"}
+{"action": "action_add_reminder", "message": "reminder text", "time": "HH:MM", "date": "today|tomorrow|DD/MM/YYYY"}
+{"action": "action_list_reminders"}
+{"action": "action_set_timer", "duration": "10 minutes", "label": "optional label"}
+{"action": "action_set_alarm", "time": "07:30"}
+{"action": "action_add_event", "title": "event title", "event_type": "exam|appointment|anniversary|birthday|meeting|deadline|alarm|other", "date": "DD/MM/YYYY", "time": "HH:MM", "notes": "optional"}
+{"action": "action_list_events", "days": 7}
+
 General:
 {"action": "greeting"}
 {"action": "unknown"}

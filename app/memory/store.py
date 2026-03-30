@@ -91,6 +91,22 @@ def init_db():
                 ON learned_patterns(phrase);
             CREATE INDEX IF NOT EXISTS idx_patterns_confirmed
                 ON learned_patterns(confirmed);
+            
+            CREATE TABLE IF NOT EXISTS todos (
+                id         TEXT PRIMARY KEY,
+                task       TEXT NOT NULL,
+                priority   TEXT DEFAULT 'normal',
+                done       INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS reminders (
+                id         TEXT PRIMARY KEY,
+                message    TEXT NOT NULL,
+                remind_at  TEXT NOT NULL,
+                fired      INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+);
         """)
 
 

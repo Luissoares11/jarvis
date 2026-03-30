@@ -20,17 +20,35 @@ _SOCIAL = {
 
 _ORDINALS = {"1": "first", "2": "second", "3": "third"}
 
-_MATH_PREFIXES = (
+_BYPASS_NORMALIZE = (
+    # math
     "calculate:", "calc:", "compute:",
     "derivative of", "differentiate",
     "integral of", "integrate",
     "solve:", "solve ",
     "limit of", "lim of",
     "plot ", "graph ", "draw ",
-    "weather in", "weather for",
+
+    # external data
+    "weather in", "weather for", "weather at",
     "forecast for", "forecast in",
-    "next fixtures", "last results",
-    "standings for", "standings in",
+    "next fixtures", "last results", "upcoming fixtures",
+    "standings for", "standings in", "standings of",
+    "table for", "table in",
+
+    # actions
+    "remind me",
+    "set a timer", "set timer", "timer:",
+    "set an alarm", "wake me",
+    "add task", "add todo",
+    "add exam", "add test", "add appointment",
+    "add anniversary", "add birthday",
+    "add meeting", "add deadline",
+    "show my tasks", "show tasks",
+    "show my events", "show my calendar",
+    "show reminders", "show my reminders",
+    "done:", "complete:", "mark done:",
+    "remove task", "delete task",
 )
 
 
@@ -123,6 +141,13 @@ SYNONYM_MAP = [
     (r"^(.+) fixtures$",                                 r"next fixtures for \1"),
     (r"^(.+) results$",                                  r"last results for \1"),
     (r"^(.+) scores$",                                   r"last results for \1"),
+    
+    # action synonyms
+    (r"^(?:i need to|i have to|don't forget to) (.+)$",  r"add task: \1"),
+    (r"^remember to (.+?) at (.+)$",                       r"remind me to \1 at \2"),
+    (r"^set (\d+) min(?:ute)? timer$",                     r"set a timer for \1 minutes"),
+    (r"^(\d+) minute timer$",                              r"set a timer for \1 minutes"),
+    (r"^wake me up at (.+)$",                              r"wake me up at \1"),
 ]
 
 
@@ -202,8 +227,7 @@ def normalize(text: str) -> str:
     if t in _SOCIAL:
         return t
 
-    # skip all transformations for math input
-    if any(t.startswith(p) for p in _MATH_PREFIXES):
+    if any(t.startswith(p) for p in _BYPASS_NORMALIZE):
         return t
 
     t = resolve_followup(t)
