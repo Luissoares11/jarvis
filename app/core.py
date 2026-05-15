@@ -26,30 +26,21 @@ from .reasoning import (
     infer_implicit_facts,
     resolve_transitive,
 )
-from .llm import (
-    interpret,
-    confirm_learning,
-    reject_learning,
-    has_pending_learning,
-)
-from .memory.context import context 
+from .llm import interpret
+from .memory.context import make_context
 from .memory.resolver import resolve_entity, infer_entity_from_relation_target, push_entity
-from .parser import parse_input
 from .personality import say
 from .relations import (
     REL_NAME, REL_AGE, REL_RELATIONSHIP, REL_BIRTHDAY,
     REL_OCCUPATION, REL_LOCATION, REL_NATIONALITY, REL_NICKNAME,
     relation_display,
 )
-from .semantic import normalize, fuzzy_collection_name
 from .utils import clean_text, title_name
 from .compute import (
     calculate, differentiate, integrate,
     limit, solve_equation, convert_units, plot_function, plot_implicit
 )
-
 from .external import get_weather, get_fixtures, get_results, get_standings
-
 from .actions import (
     add_todo, list_todos, complete_todo, delete_todo,
     add_reminder, list_reminders, load_pending_reminders,
@@ -57,7 +48,8 @@ from .actions import (
     add_calendar_event, list_events,
 )
 
-# ── formatters ───────────────────────────────────────────────
+
+# ── formatters ────────────────────────────────────────────────
 
 def format_fact_list(facts):
     if not facts:
@@ -138,7 +130,7 @@ def format_knowledge():
     return "\n".join(f"- {item}" for item in items)
 
 
-def format_debug_facts():
+def format_debug_facts(ctx):
     all_facts = find_facts()
     if not all_facts:
         return "No facts stored."
@@ -146,17 +138,16 @@ def format_debug_facts():
         f"- {f['subject']} | {f['relation']} | {f['object']}" for f in all_facts
     )
 
-def format_debug_learned():
+
+def format_debug_learned(ctx):
     from .memory.store import db_get_all_confirmed_patterns
     patterns = db_get_all_confirmed_patterns()
     if not patterns:
         return "I haven't learned anything yet."
-    lines = []
-    for phrase, action in patterns:
-        lines.append(f"- \"{phrase}\" → {action.get('action')}")
-    return "\n".join(lines)
+    return "\n".join(f"- \"{p}\" → {a.get('action')}" for p, a in patterns)
 
-def format_debug_collections():
+
+def format_debug_collections(ctx):
     collections = list_collections()
     if not collections:
         return "No collections stored."
@@ -164,7 +155,8 @@ def format_debug_collections():
         f"- {c['owner']} | {c['name']} | {c['items']}" for c in collections
     )
 
-def format_debug_history():
+
+def format_debug_history(ctx):
     from .memory.store import _conn
     with _conn() as con:
         rows = con.execute(
@@ -173,20 +165,20 @@ def format_debug_history():
         ).fetchall()
     if not rows:
         return "No computation history yet."
-    lines = []
-    for row in rows:
-        lines.append(f"- [{row['created_at'][:16]}] {row['input']} → {row['result']}")
-    return "\n".join(lines)
+    return "\n".join(
+        f"- [{r['created_at'][:16]}] {r['input']} → {r['result']}" for r in rows
+    )
 
-def format_debug_aliases():
+
+def format_debug_aliases(ctx):
     aliases = get_aliases()
     if not aliases:
         return "No aliases stored."
     return "\n".join(f"- {alias} -> {canonical}" for alias, canonical in aliases.items())
 
 
-def format_debug_context():
-    return "\n".join(f"- {key}: {value}" for key, value in context.items())
+def format_debug_context(ctx):
+    return "\n".join(f"- {key}: {value}" for key, value in ctx.items())
 
 
 def _position_to_index(position: str, length: int):
@@ -194,56 +186,36 @@ def _position_to_index(position: str, length: int):
     return mapping.get(position)
 
 
-def _describe_action(action: dict) -> str:
-    a = action.get("action", "")
-    if a == "compute_calculate":
-        return f"calculate {action.get('expr')}"
-    if a == "compute_derivative":
-        return f"differentiate {action.get('expr')} with respect to {action.get('var', 'x')}"
-    if a == "compute_integral":
-        lower = action.get("lower")
-        upper = action.get("upper")
-        if lower and upper:
-            return f"integrate {action.get('expr')} from {lower} to {upper}"
-        return f"integrate {action.get('expr')}"
-    if a == "compute_solve":
-        return f"solve {action.get('expr')}"
-    if a == "compute_plot":
-        return f"plot {action.get('expr')} from {action.get('x_min')} to {action.get('x_max')}"
-    if a == "compute_convert":
-        return f"convert {action.get('value')} {action.get('from_unit')} to {action.get('to_unit')}"
-    if a == "store_fact":
-        return f"remember {action.get('subject')}'s {action.get('relation')} as {action.get('object')}"
-    if a == "query_fact":
-        return f"look up {action.get('subject')}'s {action.get('relation')}"
-    return f"perform action: {a}"
+# ── handlers (all accept ctx explicitly) ─────────────────────
 
-
-# ── handlers ─────────────────────────────────────────────────
-
-def _handle_empty(a):
+def _handle_empty(a, ctx):
     return say("empty")
 
 
-def _handle_greeting(a):
+def _handle_greeting(a, ctx):
     return say("greeting")
 
-def _handle_social(a):
+
+def _handle_social(a, ctx):
     return say("social")
 
 
-def _handle_debug_command(a):
+def _handle_farewell(a, ctx):
+    return say("farewell")
+
+
+def _handle_debug_command(a, ctx):
     name = a["name"]
-    if name == "jarvis facts":       return format_debug_facts()
-    if name == "jarvis aliases":     return format_debug_aliases()
-    if name == "jarvis context":     return format_debug_context()
-    if name == "jarvis collections": return format_debug_collections()
-    if name == "jarvis learned":     return format_debug_learned()
-    if name == "jarvis history": return format_debug_history()
+    if name == "jarvis facts":       return format_debug_facts(ctx)
+    if name == "jarvis aliases":     return format_debug_aliases(ctx)
+    if name == "jarvis context":     return format_debug_context(ctx)
+    if name == "jarvis collections": return format_debug_collections(ctx)
+    if name == "jarvis learned":     return format_debug_learned(ctx)
+    if name == "jarvis history":     return format_debug_history(ctx)
     return say("unknown")
 
 
-def _handle_debug_dump_subject(a):
+def _handle_debug_dump_subject(a, ctx):
     subject = resolve_entity(a["subject"])
     facts = dump_subject(subject)
     if not facts:
@@ -251,24 +223,24 @@ def _handle_debug_dump_subject(a):
     return format_entity_profile(subject, facts)
 
 
-def _handle_list_entities(a):
+def _handle_list_entities(a, ctx):
     entities = list_entities()
     if not entities:
         return "I don't know anyone yet."
     return "\n".join(f"- {entity}" for entity in entities)
 
 
-def _handle_list_knowledge(a):
+def _handle_list_knowledge(a, ctx):
     return format_knowledge()
 
 
-def _handle_batch_store(a):
+def _handle_batch_store(a, ctx):
     for item in a["items"]:
-        handle_action(item)
+        handle_action(item, ctx)
     return f"{say('confirm')} I will remember that."
 
 
-def _handle_store_fact(a):
+def _handle_store_fact(a, ctx):
     subject  = resolve_entity(a["subject"])
     relation = a["relation"]
     object_  = a["object"]
@@ -278,6 +250,12 @@ def _handle_store_fact(a):
         conflict = check_conflict(subject, relation, object_)
         if conflict:
             store_pending_conflict(subject, relation, object_, conflict["object"])
+            ctx["pending_conflict"] = {
+                "subject":  subject,
+                "relation": relation,
+                "new":      object_,
+                "existing": conflict["object"],
+            }
             name = "your" if subject == "user" else subject.title() + "'s"
             return (
                 f"I already have {name} {relation} as '{conflict['object']}'. "
@@ -300,7 +278,7 @@ def _handle_store_fact(a):
     return f"{say('confirm')} I will remember {subject.title()}'s {relation_display(relation)}.{note}"
 
 
-def _handle_store_person_relation(a):
+def _handle_store_person_relation(a, ctx):
     subject = clean_text(a["subject"])
     relation_value = a["relation_value"]
 
@@ -316,13 +294,13 @@ def _handle_store_person_relation(a):
 
     return f"{say('confirm')} I will remember {subject}."
 
-def _handle_query_fact(a):
+
+def _handle_query_fact(a, ctx):
     subject  = resolve_entity(a["subject"])
     relation = a["relation"]
 
     facts = resolve_and_find(subject=subject, relation=relation)
 
-    # transitive inference fallback
     if not facts:
         transitive = resolve_transitive(subject, relation)
         if transitive:
@@ -341,7 +319,7 @@ def _handle_query_fact(a):
     if subject != "user":
         push_entity(subject)
 
-    context["last_question_type"] = "age" if relation == REL_AGE else None
+    ctx["last_question_type"] = "age" if relation == REL_AGE else None
 
     if relation == REL_AGE:
         age = facts[0]["object"]
@@ -351,7 +329,8 @@ def _handle_query_fact(a):
 
     return format_entity_profile(subject, facts)
 
-def _handle_query_entity(a):
+
+def _handle_query_entity(a, ctx):
     subject = resolve_entity(a["subject"])
     facts   = resolve_and_find(subject=subject)
 
@@ -359,12 +338,12 @@ def _handle_query_entity(a):
         return say("unknown")
 
     push_entity(subject)
-    context["last_entity_facts"]  = facts
-    context["last_question_type"] = "who"
+    ctx["last_entity_facts"]  = facts
+    ctx["last_question_type"] = "who"
     return format_entity_profile(subject, facts)
 
 
-def _handle_query_by_relation_value(a):
+def _handle_query_by_relation_value(a, ctx):
     relation = a["relation"]
     object_  = a["object"]
 
@@ -377,7 +356,7 @@ def _handle_query_by_relation_value(a):
     return say("unknown")
 
 
-def _handle_delete_fact(a):
+def _handle_delete_fact(a, ctx):
     subject  = resolve_entity(a["subject"])
     relation = a["relation"]
     deleted  = delete_facts(subject=subject, relation=relation)
@@ -390,7 +369,7 @@ def _handle_delete_fact(a):
     return f"{say('confirm')} I forgot {subject}'s {relation_display(relation)}."
 
 
-def _handle_delete_entity(a):
+def _handle_delete_entity(a, ctx):
     subject = resolve_entity(a["subject"])
     deleted = delete_facts(subject=subject)
 
@@ -400,12 +379,15 @@ def _handle_delete_entity(a):
     return f"{say('confirm')} I forgot '{subject}'."
 
 
-def _handle_set_collection(a):
+def _handle_set_collection(a, ctx):
     set_collection(a["owner"], a["name"], a["items"])
+    ctx["last_collection_owner"] = a["owner"]
+    ctx["last_collection_name"]  = a["name"]
     return f"{say('confirm')} I will remember '{a['name']}'."
 
 
-def _handle_query_collection(a):
+def _handle_query_collection(a, ctx):
+    from .semantic import fuzzy_collection_name
     owner = a["owner"]
     name  = a["name"]
 
@@ -414,21 +396,23 @@ def _handle_query_collection(a):
 
     collection = get_collection(owner, name)
     if not collection:
-        return say("unknown")
+        return say("not_found")
 
+    ctx["last_collection_owner"] = owner
+    ctx["last_collection_name"]  = name
     return format_collection(collection)
 
 
-def _handle_delete_collection(a):
+def _handle_delete_collection(a, ctx):
     deleted = delete_collection(a["owner"], a["name"])
     if not deleted:
         return say("unknown")
     return f"{say('confirm')} I forgot '{a['name']}'."
 
 
-def _handle_add_to_last_collection(a):
-    owner = context.get("last_collection_owner")
-    name  = context.get("last_collection_name")
+def _handle_add_to_last_collection(a, ctx):
+    owner = ctx.get("last_collection_owner")
+    name  = ctx.get("last_collection_name")
 
     if not owner or not name:
         return "I don't know what collection you're referring to."
@@ -437,9 +421,9 @@ def _handle_add_to_last_collection(a):
     return f"{say('confirm')} Added '{a['item']}'."
 
 
-def _handle_replace_in_last_collection(a):
-    owner = context.get("last_collection_owner")
-    name  = context.get("last_collection_name")
+def _handle_replace_in_last_collection(a, ctx):
+    owner = ctx.get("last_collection_owner")
+    name  = ctx.get("last_collection_name")
 
     if not owner or not name:
         return "I don't know what collection you're referring to."
@@ -451,9 +435,9 @@ def _handle_replace_in_last_collection(a):
     return f"{say('confirm')} Replaced '{a['old']}' with '{a['new']}'."
 
 
-def _handle_remove_from_last_collection_by_position(a):
-    owner = context.get("last_collection_owner")
-    name  = context.get("last_collection_name")
+def _handle_remove_from_last_collection_by_position(a, ctx):
+    owner = ctx.get("last_collection_owner")
+    name  = ctx.get("last_collection_name")
 
     if not owner or not name:
         return "I don't know what collection you're referring to."
@@ -473,153 +457,105 @@ def _handle_remove_from_last_collection_by_position(a):
     return f"{say('confirm')} Removed '{removed}'."
 
 
-def _handle_unknown(a):
-    raw = a.get("raw", "")
-
-    # try built-in commands first
-    command_response = run_command(clean_text(raw))
-    if command_response:
-        return command_response
-
-    # LLM fallback
-    action = interpret(raw)
-
-    if action.get("_needs_confirmation"):
-        action.pop("_needs_confirmation")
-        context["pending_learning_action"] = action
-        return (
-            f"I think you want me to {_describe_action(action)}. "
-            f"Should I do that and remember it for next time?"
-        )
-
-    if action.get("action") not in ("unknown", None):
-        return handle_action(action)
-
+def _handle_confirm_conflict(a, ctx):
+    pending = ctx.get("pending_conflict")
+    if pending:
+        replace_fact(pending["subject"], pending["relation"], pending["new"])
+        ctx["pending_conflict"] = None
+        return f"{say('confirm')} Updated."
     return say("unknown")
 
 
-def _handle_confirm_learning(a):
-    # if there's a pending learning confirmation, handle that first
-    if has_pending_learning():
-        confirm_learning()
-        pending_action = context.pop("pending_learning_action", None)
-        if pending_action:
-            result = handle_action(pending_action)
-            return f"{say('confirm')} Got it, I'll remember that.\n{result}"
-        return f"{say('confirm')} Got it, I'll remember that for next time."
-
-    # otherwise fall through to conflict confirmation
-    if has_pending_conflict():
-        result = resolve_pending_conflict(confirmed=True)
-        if result == "confirmed":
-            return f"{say('confirm')} Updated."
-
-    return say("unknown")
-
-
-def _handle_reject_learning(a):
-    if has_pending_learning():
-        reject_learning()
-        context.pop("pending_learning_action", None)
-        return "Okay, I won't remember that pattern."
-
-    if has_pending_conflict():
-        resolve_pending_conflict(confirmed=False)
+def _handle_reject_conflict(a, ctx):
+    if ctx.get("pending_conflict"):
+        ctx["pending_conflict"] = None
         return f"{say('confirm')} Keeping the existing value."
-
     return say("unknown")
 
 
-def _handle_compute_calculate(a):
+def _handle_compute_calculate(a, ctx):
     return calculate(a["expr"])
 
 
-def _handle_compute_derivative(a):
+def _handle_compute_derivative(a, ctx):
     return differentiate(a["expr"], a.get("var", "x"), a.get("order", 1))
 
 
-def _handle_compute_integral(a):
-    return integrate(
-        a["expr"],
-        a.get("var", "x"),
-        a.get("lower"),
-        a.get("upper"),
-    )
+def _handle_compute_integral(a, ctx):
+    return integrate(a["expr"], a.get("var", "x"), a.get("lower"), a.get("upper"))
 
 
-def _handle_compute_limit(a):
-    return limit(
-        a["expr"],
-        a.get("var", "x"),
-        a.get("point", "0"),
-        a.get("direction", "+"),
-    )
+def _handle_compute_limit(a, ctx):
+    return limit(a["expr"], a.get("var", "x"), a.get("point", "0"), a.get("direction", "+"))
 
 
-def _handle_compute_solve(a):
+def _handle_compute_solve(a, ctx):
     return solve_equation(a["expr"], a.get("var", "x"))
 
 
-def _handle_compute_convert(a):
+def _handle_compute_convert(a, ctx):
     return convert_units(a["value"], a["from_unit"], a["to_unit"])
 
 
-def _handle_compute_plot(a):
-    return plot_function(
-        a["expr"],
-        x_min=a.get("x_min", "-10"),
-        x_max=a.get("x_max", "10"),
-    )
+def _handle_compute_plot(a, ctx):
+    return plot_function(a["expr"], x_min=a.get("x_min", "-10"), x_max=a.get("x_max", "10"))
 
-def _handle_compute_plot_implicit(a):
-    from .compute import plot_implicit
-    x_range = (
-        float(a.get("x_min", -2)),
-        float(a.get("x_max", 2))
-    )
-    y_range = (
-        float(a.get("y_min", -2)),
-        float(a.get("y_max", 2))
-    )
+
+def _handle_compute_plot_implicit(a, ctx):
+    x_range = (float(a.get("x_min", -2)), float(a.get("x_max", 2)))
+    y_range = (float(a.get("y_min", -2)), float(a.get("y_max", 2)))
     return plot_implicit(a["expr"], x_range=x_range, y_range=y_range)
 
-def _handle_external_weather(a):
+
+def _handle_external_weather(a, ctx):
     return get_weather(a["location"], forecast_days=a.get("days", 1))
 
-def _handle_external_fixtures(a):
+
+def _handle_external_fixtures(a, ctx):
     return get_fixtures(a["league"], next_n=a.get("count", 5))
 
-def _handle_external_results(a):
+
+def _handle_external_results(a, ctx):
     return get_results(a["league"], last_n=a.get("count", 5))
 
-def _handle_external_standings(a):
+
+def _handle_external_standings(a, ctx):
     return get_standings(a["league"])
 
-def _handle_action_add_todo(a):
+
+def _handle_action_add_todo(a, ctx):
     return add_todo(a["task"])
 
-def _handle_action_list_todos(a):
+
+def _handle_action_list_todos(a, ctx):
     return list_todos()
 
-def _handle_action_complete_todo(a):
+
+def _handle_action_complete_todo(a, ctx):
     return complete_todo(a["ref"])
 
-def _handle_action_delete_todo(a):
+
+def _handle_action_delete_todo(a, ctx):
     return delete_todo(a["ref"])
 
-def _handle_action_add_reminder(a):
+
+def _handle_action_add_reminder(a, ctx):
     return add_reminder(a["message"], a["time"], a.get("date", "today"))
 
-def _handle_action_list_reminders(a):
+
+def _handle_action_list_reminders(a, ctx):
     return list_reminders()
 
-def _handle_action_set_timer(a):
+
+def _handle_action_set_timer(a, ctx):
     return set_timer(a["duration"], a.get("label", "Timer"))
 
-def _handle_action_set_alarm(a):
+
+def _handle_action_set_alarm(a, ctx):
     return set_alarm(a["time"])
 
-def _handle_action_add_event(a):
+
+def _handle_action_add_event(a, ctx):
     return add_calendar_event(
         title=a.get("title", a.get("event_type", "Event")),
         date_str=a["date"],
@@ -628,15 +564,26 @@ def _handle_action_add_event(a):
         notes=a.get("notes", ""),
     )
 
-def _handle_action_list_events(a):
+
+def _handle_action_list_events(a, ctx):
     return list_events(days_ahead=a.get("days", 7))
 
-# ── registry ─────────────────────────────────────────────────
+
+def _handle_unknown(a, ctx):
+    raw = a.get("raw", "")
+    command_response = run_command(clean_text(raw))
+    if command_response:
+        return command_response
+    return say("unknown")
+
+
+# ── registry ──────────────────────────────────────────────────
 
 _HANDLERS = {
     "empty":                                    _handle_empty,
     "greeting":                                 _handle_greeting,
     "social":                                   _handle_social,
+    "farewell":                                 _handle_farewell,
     "debug_command":                            _handle_debug_command,
     "debug_dump_subject":                       _handle_debug_dump_subject,
     "list_entities":                            _handle_list_entities,
@@ -655,8 +602,8 @@ _HANDLERS = {
     "add_to_last_collection":                   _handle_add_to_last_collection,
     "replace_in_last_collection":               _handle_replace_in_last_collection,
     "remove_from_last_collection_by_position":  _handle_remove_from_last_collection_by_position,
-    "confirm_conflict":                         _handle_confirm_learning,
-    "reject_conflict":                          _handle_reject_learning,
+    "confirm_conflict":                         _handle_confirm_conflict,
+    "reject_conflict":                          _handle_reject_conflict,
     "compute_calculate":                        _handle_compute_calculate,
     "compute_derivative":                       _handle_compute_derivative,
     "compute_integral":                         _handle_compute_integral,
@@ -678,42 +625,63 @@ _HANDLERS = {
     "action_set_timer":                         _handle_action_set_timer,
     "action_set_alarm":                         _handle_action_set_alarm,
     "action_add_event":                         _handle_action_add_event,
-    "action_list_events":                       _handle_action_list_events,   
+    "action_list_events":                       _handle_action_list_events,
 }
 
 
-# ── dispatch ─────────────────────────────────────────────────
+# ── dispatch ──────────────────────────────────────────────────
 
-def handle_action(action_data: dict) -> str:
+def handle_action(action_data: dict, ctx: dict) -> str:
     action = action_data.get("action", "unknown")
-    context["last_action"] = action
+    ctx["last_action"] = action
 
     handler = _HANDLERS.get(action, _handle_unknown)
-    return handler(action_data)
+    return handler(action_data, ctx)
 
 
-# ── entry point ──────────────────────────────────────────────
+# ── entry point ───────────────────────────────────────────────
 
 def process_input(user_input: str, ctx: dict = None) -> str:
-    active_ctx = ctx if ctx is not None else context
+    """
+    Main entry point. ctx is the session context dict passed in from main.py.
+    No global state is touched — everything flows through ctx explicitly.
+    """
+    if ctx is None:
+        ctx = make_context()
 
-    from .memory import context as ctx_module
-    original = ctx_module.context.copy()
-    ctx_module.context.update(active_ctx)
+    raw = user_input.strip()
 
-    try:
-        text = normalize(user_input.strip())
-        action_data = parse_input(text)
-        action_data["raw"] = user_input
-        response = handle_action(action_data)
-        active_ctx.update(ctx_module.context)
-    finally:
-        if ctx is None:
-            pass
-        else:
-            ctx_module.context.update(original)
+    if not raw:
+        return handle_action({"action": "empty"}, ctx)
 
-    log_event("user", user_input)
+    # check for debug commands before hitting the LLM
+    _debug_commands = {
+        "jarvis facts", "jarvis aliases", "jarvis context",
+        "jarvis collections", "jarvis learned", "jarvis history",
+    }
+    if raw.lower() in _debug_commands:
+        return handle_action({"action": "debug_command", "name": raw.lower()}, ctx)
+
+    import re
+    m = re.match(r"^jarvis dump (.+)$", raw.lower())
+    if m:
+        return handle_action({"action": "debug_dump_subject", "subject": m.group(1).strip()}, ctx)
+
+    # check for pending conflict confirmation (yes/no overrides everything)
+    if ctx.get("pending_conflict"):
+        t = raw.lower().strip()
+        if t in {"yes", "yeah", "yep", "correct", "confirm", "sure", "do it", "update it"}:
+            return handle_action({"action": "confirm_conflict"}, ctx)
+        if t in {"no", "nope", "nah", "cancel", "keep it", "leave it"}:
+            return handle_action({"action": "reject_conflict"}, ctx)
+
+    # interpret intent (cache → LLM)
+    action_data = interpret(raw)
+    action_data["raw"] = raw
+
+    response = handle_action(action_data, ctx)
+
+    log_event("user", raw)
     log_event("jarvis", response)
 
     return response

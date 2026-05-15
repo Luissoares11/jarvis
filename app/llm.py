@@ -9,10 +9,7 @@ from .memory.store import (
     db_save_pattern,
     db_get_exact_pattern,
     db_get_all_confirmed_patterns,
-    db_confirm_pattern,
-    db_delete_pattern,
 )
-from .memory.context import context
 
 
 SYSTEM_PROMPT = """You are the intent parser for Jarvis, a personal AI assistant.
@@ -26,6 +23,18 @@ Memory:
 {"action": "query_fact", "subject": "user|name", "relation": "name|age|birthday|occupation|location|nationality"}
 {"action": "query_entity", "subject": "name"}
 {"action": "delete_fact", "subject": "user|name", "relation": "relation_name"}
+{"action": "store_person_relation", "subject": "name", "relation_value": "girlfriend|boyfriend|brother|..."}
+{"action": "query_by_relation_value", "relation": "relationship", "object": "girlfriend|..."}
+{"action": "list_entities"}
+{"action": "list_knowledge"}
+{"action": "set_collection", "owner": "user", "name": "collection name", "items": ["item1", "item2"]}
+{"action": "query_collection", "owner": "user", "name": "collection name"}
+{"action": "delete_collection", "owner": "user", "name": "collection name"}
+{"action": "add_to_last_collection", "item": "new item"}
+{"action": "remove_from_last_collection_by_position", "position": "first|second|third|last"}
+{"action": "replace_in_last_collection", "old": "old item", "new": "new item"}
+{"action": "delete_entity", "subject": "name"}
+{"action": "batch_store", "items": [{"action": "store_fact", ...}, ...]}
 
 Computation:
 {"action": "compute_calculate", "expr": "math expression"}
@@ -47,6 +56,7 @@ Actions:
 {"action": "action_add_todo", "task": "task description"}
 {"action": "action_list_todos"}
 {"action": "action_complete_todo", "ref": "task name or number"}
+{"action": "action_delete_todo", "ref": "task name or number"}
 {"action": "action_add_reminder", "message": "reminder text", "time": "HH:MM", "date": "today|tomorrow|DD/MM/YYYY"}
 {"action": "action_list_reminders"}
 {"action": "action_set_timer", "duration": "10 minutes", "label": "optional label"}
@@ -56,18 +66,58 @@ Actions:
 
 General:
 {"action": "greeting"}
+{"action": "social"}
 {"action": "unknown"}
 
 Rules:
 - Always return valid JSON only. No explanation, no markdown, no extra text.
 - For math expressions, preserve all symbols: +, -, *, /, ^, (, ), =
 - For plot ranges, support: pi, e, tau, inf and arithmetic like 2*pi
+- Dates must always be returned as DD/MM/YYYY format.
+- Times must always be returned as HH:MM (24h) format.
+- If the user says "today", "tomorrow", use those words as-is for the date field.
 - If you cannot determine the intent, return {"action": "unknown"}
+- For weather: if the user says "forecast", "next N days", or "this week", set days=5. If just "weather" or "what's it like", set days=1.
 """
 
+# ── fast-path: social/greeting inputs that never need the LLM ──
+
+_GREETINGS = {
+    "hello", "hi", "hey", "yo", "sup", "wassup",
+}
+
+_SOCIAL = {
+    "how are you", "how are you?", "how are u", "how r u",
+    "what's up", "whats up", "not bad", "fine thanks",
+    "doing well", "all good",
+}
+
+_FAREWELLS = {
+    "bye", "goodbye", "see you", "later", "cya",
+}
+
+_TIME_OF_DAY = {
+    "good morning", "good afternoon", "good evening",
+    "good night", "morning", "evening",
+}
+
+
+def _check_hardcoded(text: str) -> dict | None:
+    """Return an action for simple social inputs without calling the LLM."""
+    t = text.lower().strip().rstrip("?!")
+    if t in _GREETINGS or t in _TIME_OF_DAY:
+        return {"action": "greeting"}
+    if t in _SOCIAL:
+        return {"action": "social"}
+    if t in _FAREWELLS:
+        return {"action": "farewell"}
+    return None
+
+
+# ── LLM call ──────────────────────────────────────────────────
 
 def _call_llm(user_input: str) -> dict:
-    """Call Claude Haiku to interpret unknown input."""
+    """Send raw input to Claude Haiku and get back an action dict."""
     try:
         import anthropic
         client = anthropic.Anthropic()
@@ -80,93 +130,67 @@ def _call_llm(user_input: str) -> dict:
         )
 
         raw = response.content[0].text.strip()
-
-        # strip markdown code blocks if present
         raw = re.sub(r"```json|```", "", raw).strip()
-
         return json.loads(raw)
+
     except Exception as e:
         return {"action": "unknown", "error": str(e)}
 
 
+# ── pattern cache ─────────────────────────────────────────────
+
 def _fuzzy_match(phrase: str, confirmed_patterns: list) -> dict | None:
-    """
-    Try to find a close match among confirmed patterns.
-    Returns the action of the closest match if confidence is high enough.
-    """
+    """Find a close match among confirmed cached patterns."""
     known_phrases = [p[0] for p in confirmed_patterns]
-    matches = get_close_matches(phrase, known_phrases, n=1, cutoff=0.75)
+    matches = get_close_matches(phrase, known_phrases, n=1, cutoff=0.82)
 
     if matches:
         matched_phrase = matches[0]
         action = next(a for p, a in confirmed_patterns if p == matched_phrase)
-        return action, matched_phrase
+        return action
 
-    return None, None
+    return None
 
 
-_FILLER = re.compile(
-    r"^(can you|could you|please|jarvis|hey|would you|i want you to|i need you to)\s+",
-    re.IGNORECASE
-)
-
-def _strip_filler(text: str) -> str:
-    """Remove conversational filler so 'can you plot x' matches 'plot x'."""
-    return _FILLER.sub("", text).strip()
-
+# ── main entry point ──────────────────────────────────────────
 
 def interpret(user_input: str) -> dict:
-    phrase = user_input.lower().strip()
-    stripped = _strip_filler(phrase)
+    """
+    Resolve user input to an action dict.
 
-    # 1 — exact match (try both original and stripped)
-    exact = db_get_exact_pattern(phrase) or db_get_exact_pattern(stripped)
+    Order:
+      1. Hardcoded social/greeting check (free, instant)
+      2. Exact cache hit (free, instant)
+      3. Fuzzy cache hit (free, instant)
+      4. LLM call (paid, ~300ms) → auto-cache on success
+    """
+    phrase = user_input.lower().strip()
+
+    # 1 — hardcoded fast path
+    hardcoded = _check_hardcoded(phrase)
+    if hardcoded:
+        return hardcoded
+
+    # 2 — exact cache hit
+    exact = db_get_exact_pattern(phrase)
     if exact:
         return exact
 
-    # 2 — fuzzy match on stripped phrase
+    # 3 — fuzzy cache hit
     all_patterns = db_get_all_confirmed_patterns()
-    fuzzy_action, matched_phrase = _fuzzy_match(stripped, all_patterns)
-    if fuzzy_action:
+    fuzzy = _fuzzy_match(phrase, all_patterns)
+    if fuzzy:
+        # still run LLM to extract fresh parameters (dates, names, etc.)
+        # but use fuzzy hit as a confidence signal — if LLM agrees, cache it
         action = _call_llm(user_input)
-        if action.get("action") != "unknown":
+        if action.get("action") not in ("unknown", None):
             db_save_pattern(phrase, action, confirmed=True)
-            db_save_pattern(stripped, action, confirmed=True)
-            return action
+        return action
 
-    # 3 — LLM fallback with confirmation
+    # 4 — LLM fallback, auto-cache on success
     action = _call_llm(user_input)
 
-    if action.get("action") != "unknown":
-        db_save_pattern(phrase, action, confirmed=False)
-        db_save_pattern(stripped, action, confirmed=False)
-        context["pending_learning"] = {
-            "phrase": phrase,
-            "action": action,
-        }
-        action["_needs_confirmation"] = True
+    if action.get("action") not in ("unknown", None):
+        db_save_pattern(phrase, action, confirmed=True)
 
     return action
-
-def confirm_learning():
-    """User confirmed — store the pending pattern permanently."""
-    pending = context.get("pending_learning")
-    if not pending:
-        return False
-    db_confirm_pattern(pending["phrase"])
-    context["pending_learning"] = None
-    return True
-
-
-def reject_learning():
-    """User rejected — delete the pending pattern."""
-    pending = context.get("pending_learning")
-    if not pending:
-        return False
-    db_delete_pattern(pending["phrase"])
-    context["pending_learning"] = None
-    return True
-
-
-def has_pending_learning():
-    return bool(context.get("pending_learning"))

@@ -1,6 +1,6 @@
 import re
 import unicodedata
-
+from difflib import get_close_matches
 
 def clean_text(text: str, math_mode: bool = False) -> str:
     text = text.lower().strip()
@@ -42,3 +42,7 @@ def split_values(text: str):
 
 def title_name(name: str) -> str:
     return " ".join(word.capitalize() for word in name.split())
+
+def fuzzy_collection_name(name: str, known_names: list[str]) -> str:
+    matches = get_close_matches(name, known_names, n=1, cutoff=0.6)
+    return matches[0] if matches else name
