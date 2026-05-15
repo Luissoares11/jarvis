@@ -18,3 +18,6 @@ Thumbs.db
 
 # VSCode settings
 .vscode/
+
+credentials.json
+token.json
