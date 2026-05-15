@@ -387,7 +387,7 @@ def _handle_set_collection(a, ctx):
 
 
 def _handle_query_collection(a, ctx):
-    from .semantic import fuzzy_collection_name
+    from .utils import fuzzy_collection_name
     owner = a["owner"]
     name  = a["name"]
 
