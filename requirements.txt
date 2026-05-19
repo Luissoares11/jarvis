@@ -1,6 +1,12 @@
 fastapi
-uvicorn
+uvicorn[standard]
+python-dotenv
+anthropic
+httpx
+sympy
+matplotlib
 numpy
-sentence-transformers
-torch
-sympy matplotlib
+tzdata
+google-auth
+google-auth-oauthlib
+google-api-python-client
