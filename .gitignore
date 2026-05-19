@@ -1,23 +1,7 @@
-# Python caches
+.env
+token.json
+credentials.json
+data/
+logs/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-
-# Virtual environment
-venv/
-.env/
-
-# Memory / embeddings
-*.pt
-*.bin
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# VSCode settings
-.vscode/
-
-credentials.json
-token.json
