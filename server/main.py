@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -62,3 +63,11 @@ def chat(request: ChatRequest, token: str = Depends(verify_token)):
         return ChatResponse(response=response, session_id=request.session_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
