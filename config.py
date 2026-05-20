@@ -10,7 +10,7 @@ DATA_DIR.mkdir(exist_ok=True)
 
 MEMORY_FILE = "data/memory"
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-FOOTBALL_KEY = os.getenv("FOOTBALL-DATA-API-KEY")
+FOOTBALL_KEY = os.getenv("FOOTBALL_DATA_API_KEY")
 
 HOST = "0.0.0.0"
 PORT = 8000
