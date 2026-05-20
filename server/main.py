@@ -51,7 +51,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 def root():
-    return {"message": "Jarvis is running"}
+    return {"message": "Amo-te muito"}
 
 
 @app.post("/chat", response_model=ChatResponse)
