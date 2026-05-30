@@ -45,7 +45,7 @@ from .actions import (
     add_todo, list_todos, complete_todo, delete_todo,
     add_reminder, list_reminders, load_pending_reminders,
     set_timer, set_alarm,
-    add_calendar_event, list_events,
+    list_events,
 )
 
 
