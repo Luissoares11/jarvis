@@ -97,7 +97,8 @@ jarvis/
 - [x] External data — weather, football
 - [x] Actions — todos, reminders, timers, Google Calendar
 - [x] API server — FastAPI, auth, session context
-- [ ] Server deployment — Proxmox VM, systemd, Tailscale
+- [x] Server deployment — Proxmox VM, systemd, Tailscale
+- [x] Desktop UI — desktop tray
 - [ ] Phone UI — mobile chat interface
 - [ ] Voice — Whisper STT, local TTS, wake word
 - [ ] Device control — smart home, scripts, automations
