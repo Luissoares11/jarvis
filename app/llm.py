@@ -135,9 +135,9 @@ def _check_hardcoded(text: str) -> dict | None:
 # ── LLM call ──────────────────────────────────────────────────
 
 def _call_llm(user_input: str) -> dict:
-    """Send raw input to Claude Haiku and get back an action dict."""
     try:
         import anthropic
+        import re
         client = anthropic.Anthropic()
 
         response = client.messages.create(
@@ -149,6 +149,12 @@ def _call_llm(user_input: str) -> dict:
 
         raw = response.content[0].text.strip()
         raw = re.sub(r"```json|```", "", raw).strip()
+
+        # extract only the JSON object, ignore anything after it
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if match:
+            raw = match.group(0)
+
         return json.loads(raw)
 
     except Exception as e:
