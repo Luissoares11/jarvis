@@ -340,32 +340,31 @@ def add_calendar_event(
                 )
             )
 
-        # sync to Google Calendar
-        try:
-            service = _get_calendar_service()
-            event = {
-                "summary":     full_title,
-                "description": notes,
-                "start": {
-                    "dateTime": dt.isoformat(),
-                    "timeZone": TIMEZONE,
-                },
-                "end": {
-                    "dateTime": dt_end.isoformat(),
-                    "timeZone": TIMEZONE,
-                },
-                "reminders": {
-                    "useDefault": False,
-                    "overrides": [
-                        {"method": "popup", "minutes": 30},
-                    ],
-                },
-            }
-            service.events().insert(calendarId="primary", body=event).execute()
-            google_note = " Synced to Google Calendar."
-        except Exception as e:
-            google_note = f" (Google Calendar sync failed: {e})"
-
+            # sync to Google Calendar
+            try:
+                service = _get_calendar_service()
+                event = {
+                    "summary":     full_title,
+                    "description": notes,
+                    "start": {
+                        "dateTime": dt.isoformat(),
+                        "timeZone": TIMEZONE,
+                    },
+                    "end": {
+                        "dateTime": dt_end.isoformat(),
+                        "timeZone": TIMEZONE,
+                    },
+                    "reminders": {
+                        "useDefault": False,
+                        "overrides": [
+                            {"method": "popup", "minutes": 30},
+                        ],
+                    },
+                }
+                service.events().insert(calendarId="primary", body=event).execute()
+                google_note = " Synced to Google Calendar."
+            except Exception as e:
+                google_note = ""  # silently skip instead of showing error
         return (
             f"Added {type_label} '{title}' on "
             f"{dt.strftime('%d %b at %H:%M')}.{google_note}"

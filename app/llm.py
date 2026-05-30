@@ -61,7 +61,8 @@ Actions:
 {"action": "action_list_reminders"}
 {"action": "action_set_timer", "duration": "10 minutes", "label": "optional label"}
 {"action": "action_set_alarm", "time": "07:30"}
-{"action": "action_add_event", "title": "event title", "event_type": "exam|appointment|anniversary|birthday|meeting|deadline|alarm|other", "date": "DD/MM/YYYY", "time": "HH:MM", "notes": "optional"}
+{"action": "action_add_event", "title": "descriptive event title extracted from input", "event_type": "exam|appointment|anniversary|birthday|meeting|deadline|alarm|other", "date": "DD/MM/YYYY or today or tomorrow", "time": "HH:MM in 24h format, default 09:00 if not specified", "notes": "optional"}
+{"action": "action_delete_event", "title": "event title to delete"}
 {"action": "action_list_events", "days": 7}
 
 General:
@@ -78,6 +79,9 @@ Rules:
 - If the user says "today", "tomorrow", use those words as-is for the date field.
 - If you cannot determine the intent, return {"action": "unknown"}
 - For weather: if the user says "forecast", "next N days", or "this week", set days=5. If just "weather" or "what's it like", set days=1.
+- For events, extract a meaningful title from the input. "I have a birthday tomorrow" → title="Birthday", but "comunhão Duarte" → title="Comunhão Duarte". Never use just the event type as the title.
+- If no time is specified for an event, default to 09:00.
+- If no date is given for an event, return {"action": "unknown"} — do not guess.
 """
 
 # ── fast-path: social/greeting inputs that never need the LLM ──

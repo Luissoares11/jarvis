@@ -568,6 +568,19 @@ def _handle_action_add_event(a, ctx):
 def _handle_action_list_events(a, ctx):
     return list_events(days_ahead=a.get("days", 7))
 
+def _handle_action_delete_event(a, ctx):
+    from .memory.store import _conn
+    title = a.get("title", "")
+    with _conn() as con:
+        row = con.execute(
+            "SELECT id, title FROM events WHERE title LIKE ?",
+            (f"%{title}%",)
+        ).fetchone()
+        if row:
+            con.execute("DELETE FROM events WHERE id = ?", (row["id"],))
+            return f"{say('confirm')} Removed event '{row['title']}'."
+    return "I couldn't find that event."
+
 
 def _handle_unknown(a, ctx):
     raw = a.get("raw", "")
@@ -626,6 +639,7 @@ _HANDLERS = {
     "action_set_alarm":                         _handle_action_set_alarm,
     "action_add_event":                         _handle_action_add_event,
     "action_list_events":                       _handle_action_list_events,
+    "action_delete_event":                      _handle_action_delete_event,
 }
 
 
