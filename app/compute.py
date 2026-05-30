@@ -277,6 +277,9 @@ def plot_implicit(expr_str: str, x_range=(-2, 2), y_range=(-2, 2)) -> str:
         import plotly.graph_objects as go
         import numpy as np
 
+        original_expr = expr_str
+
+        # handle "lhs = rhs" format → convert to "lhs - (rhs)"
         if "=" in expr_str:
             parts = expr_str.split("=", 1)
             expr_str_parsed = f"({parts[0].strip()}) - ({parts[1].strip()})"
@@ -308,7 +311,7 @@ def plot_implicit(expr_str: str, x_range=(-2, 2), y_range=(-2, 2)) -> str:
             name=f'{expr_str} = 0'
         ))
         fig.update_layout(
-            title=f'{expr_str} = 0',
+            title=f'{expr_str}',
             paper_bgcolor='#050a0f',
             plot_bgcolor='#071828',
             font=dict(color='#70b8f0', family='Courier New'),
@@ -320,7 +323,7 @@ def plot_implicit(expr_str: str, x_range=(-2, 2), y_range=(-2, 2)) -> str:
 
         import os
         os.makedirs("data/plots", exist_ok=True)
-        filename = f"plot_implicit_{abs(hash(expr_str))}.html"
+        filename = f"plot_implicit_{abs(hash(expr))}.html"
         path = f"data/plots/{filename}"
         with open(path, "w") as f:
             f.write(html)
@@ -328,4 +331,4 @@ def plot_implicit(expr_str: str, x_range=(-2, 2), y_range=(-2, 2)) -> str:
         return f"PLOT:{filename}"
 
     except Exception as e:
-        return f"I couldn't plot that: {e}"   
+        return f"I couldn't plot that: {e}" 

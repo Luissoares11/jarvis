@@ -23,7 +23,7 @@ Memory:
 {"action": "query_fact", "subject": "user|name", "relation": "name|age|birthday|occupation|location|nationality"}
 {"action": "query_entity", "subject": "name"}
 {"action": "delete_fact", "subject": "user|name", "relation": "relation_name"}
-{"action": "store_person_relation", "subject": "name", "relation_value": "girlfriend|boyfriend|brother|..."}
+{"action": "store_person_relation", "subject": "name", "relation_value": "girlfriend|boyfriend|brother|sister|friend|partner"}
 {"action": "query_by_relation_value", "relation": "relationship", "object": "girlfriend|..."}
 {"action": "list_entities"}
 {"action": "list_knowledge"}
@@ -43,8 +43,8 @@ Computation:
 {"action": "compute_limit", "expr": "expression", "var": "x", "point": "0", "direction": "+"}
 {"action": "compute_solve", "expr": "equation or expression", "var": "x"}
 {"action": "compute_convert", "value": 100, "from_unit": "km", "to_unit": "miles"}
-{"action": "compute_plot", "expr": "expression", "x_min": "-10", "x_max": "10"}
-{"action": "compute_plot_implicit", "expr": "expression in x and y", "x_min": "-2", "x_max": "2", "y_min": "-2", "y_max": "2"}
+{"action": "compute_plot", "expr": "expression", "var": "x", "x_min": "-10", "x_max": "10"}
+{"action": "compute_plot_implicit", "expr": "expression in x and y already rewritten as lhs - (rhs)", "x_min": "-2", "x_max": "2", "y_min": "-2", "y_max": "2"}
 
 External data:
 {"action": "external_weather", "location": "city name", "days": 1}
@@ -64,24 +64,36 @@ Actions:
 {"action": "action_add_event", "title": "descriptive event title extracted from input", "event_type": "exam|appointment|anniversary|birthday|meeting|deadline|alarm|other", "date": "DD/MM/YYYY or today or tomorrow", "time": "HH:MM in 24h format, default 09:00 if not specified", "notes": "optional"}
 {"action": "action_delete_event", "title": "event title to delete"}
 {"action": "action_list_events", "days": 7}
+{"action": "action_list_events", "days": 0, "include_past": true}
 
 General:
 {"action": "greeting"}
 {"action": "social"}
+{"action": "farewell"}
 {"action": "unknown"}
 
-Rules:
+Math expression rules:
+- Always convert ^ to ** (e.g. x^2 → x**2)
+- Always expand implicit multiplication (e.g. 2x → 2*x, xy → x*y, 3sin(x) → 3*sin(x))
+- For implicit plots, rewrite "f(x,y) = g(x,y)" as "(f(x,y)) - (g(x,y))" in the expr field
+- For solve, rewrite "lhs = rhs" as "lhs - (rhs)" in the expr field
+- For derivatives, always include the var field — infer it from the expression if not stated
+- For integrals, always include the var field — default to x if not stated
+- For limits, always include the point field — default to 0 if not stated
+- For unit conversions, normalize unit names: kilometres → km, metres → m, celsius → c, fahrenheit → f, pounds → lbs
+- For plot ranges, keep as expressions — pi, 2*pi, e are valid
+- If the expression contains log, assume natural log (ln) unless the user specifies otherwise
+- If the expression is ambiguous or unparseable, return {"action": "unknown"}
+
+General rules:
 - Always return valid JSON only. No explanation, no markdown, no extra text.
-- For math expressions, preserve all symbols: +, -, *, /, ^, (, ), =
-- For plot ranges, support: pi, e, tau, inf and arithmetic like 2*pi
-- Dates must always be returned as DD/MM/YYYY format.
-- Times must always be returned as HH:MM (24h) format.
-- If the user says "today", "tomorrow", use those words as-is for the date field.
-- If you cannot determine the intent, return {"action": "unknown"}
-- For weather: if the user says "forecast", "next N days", or "this week", set days=5. If just "weather" or "what's it like", set days=1.
-- For events, extract a meaningful title from the input. "I have a birthday tomorrow" → title="Birthday", but "comunhão Duarte" → title="Comunhão Duarte". Never use just the event type as the title.
-- If no time is specified for an event, default to 09:00.
-- If no date is given for an event, return {"action": "unknown"} — do not guess.
+- If the user greets in Portuguese (e.g. "olá", "bom dia"), respond with {"action": "greeting"}
+- If the user says "obrigado" or "obrigada", respond with {"action": "social"}
+- Never infer a date that wasn't stated — if no date is given for an event or reminder, return {"action": "unknown"}
+- For ambiguous inputs that could be memory or action, prefer action
+- For weather: if the user says "forecast", "next N days", or "this week", set days=5. Otherwise set days=1.
+- For events, extract a meaningful title from the input. Never use just the event type as the title.
+- If no date is given for an event or reminder, return {"action": "unknown"} — do not guess.
 """
 
 # ── fast-path: social/greeting inputs that never need the LLM ──
