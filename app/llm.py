@@ -91,7 +91,8 @@ General rules:
 - Always return valid JSON only. No explanation, no markdown, no extra text.
 - If the user greets in Portuguese (e.g. "olá", "bom dia"), respond with {"action": "greeting"}
 - If the user says "obrigado" or "obrigada", respond with {"action": "social"}
-- Never infer a date that wasn't stated — if no date is given for an event or reminder, return {"action": "unknown"}
+- For reminders and alarms: if a time is given but no date, default date to "today"
+- For events (exam, meeting, etc.): if no date is given, return {"action": "unknown"}
 - For ambiguous inputs that could be memory or action, prefer action
 - For weather: if the user says "forecast", "next N days", or "this week", set days=5. Otherwise set days=1.
 - For events, extract a meaningful title from the input. Never use just the event type as the title.
