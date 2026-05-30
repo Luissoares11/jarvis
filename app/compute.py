@@ -221,7 +221,7 @@ def _parse_range_value(s: str) -> float:
 def plot_function(expr_str: str, var_str: str = "x",
                   x_min="-10", x_max="10") -> str:
     try:
-        import matplotlib.pyplot as plt
+        import plotly.graph_objects as go
         import numpy as np
 
         x_min_val = _parse_range_value(str(x_min))
@@ -232,64 +232,94 @@ def plot_function(expr_str: str, var_str: str = "x",
         f    = sp.lambdify(var, expr, modules=["numpy"])
 
         x_vals = np.linspace(x_min_val, x_max_val, 1000)
-
         y_vals = []
         for val in x_vals:
             try:
                 result = float(f(val))
-                y_vals.append(result if np.isfinite(result) else np.nan)
+                y_vals.append(result if np.isfinite(result) else None)
             except Exception:
-                y_vals.append(np.nan)
+                y_vals.append(None)
 
-        y_vals = np.array(y_vals, dtype=float)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=x_vals.tolist(),
+            y=y_vals,
+            mode='lines',
+            line=dict(color='#378ADD', width=2),
+            name=f'f({var_str}) = {expr_str}'
+        ))
+        fig.update_layout(
+            title=f'f({var_str}) = {expr_str}',
+            paper_bgcolor='#050a0f',
+            plot_bgcolor='#071828',
+            font=dict(color='#70b8f0', family='Courier New'),
+            xaxis=dict(gridcolor='#0d2a40', zerolinecolor='#1a3a55'),
+            yaxis=dict(gridcolor='#0d2a40', zerolinecolor='#1a3a55'),
+        )
 
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(x_vals, y_vals, color="#378ADD", linewidth=2)
-        ax.axhline(0, color="gray", linewidth=0.8, linestyle="--")
-        ax.axvline(0, color="gray", linewidth=0.8, linestyle="--")
-        ax.set_title(f"f({var_str}) = {expr_str}", fontsize=13)
-        ax.set_xlabel(var_str)
-        ax.set_ylabel(f"f({var_str})")
-        ax.grid(True, alpha=0.3)
-        fig.tight_layout()
+        html = fig.to_html(full_html=True, include_plotlyjs=True)
 
-        plt.show()
-        plt.close()
+        import os
+        os.makedirs("data/plots", exist_ok=True)
+        filename = f"plot_{abs(hash(expr_str))}.html"
+        path = f"data/plots/{filename}"
+        with open(path, "w") as f:
+            f.write(html)
 
-        return f"Here's the graph of f({var_str}) = {expr_str}."
+        return f"PLOT:{filename}"
+
     except Exception as e:
         return f"I couldn't plot that: {e}"
-    
+
+
 def plot_implicit(expr_str: str, x_range=(-2, 2), y_range=(-2, 2)) -> str:
     try:
-        import matplotlib.pyplot as plt
+        import plotly.graph_objects as go
         import numpy as np
 
         x_sym, y_sym = sp.symbols("x y")
         expr = _parse_expr(expr_str)
         f = sp.lambdify((x_sym, y_sym), expr, modules=["numpy"])
 
-        x_vals = np.linspace(*x_range, 1000)
-        y_vals = np.linspace(*y_range, 1000)
+        x_vals = np.linspace(*x_range, 500)
+        y_vals = np.linspace(*y_range, 500)
         X, Y = np.meshgrid(x_vals, y_vals)
 
         with np.errstate(invalid="ignore"):
             Z = f(X, Y)
 
-        fig, ax = plt.subplots(figsize=(6, 6))
-        ax.contour(X, Y, Z, levels=[0], colors="#378ADD", linewidths=2)
-        ax.axhline(0, color="gray", linewidth=0.8, linestyle="--")
-        ax.axvline(0, color="gray", linewidth=0.8, linestyle="--")
-        ax.set_title(f"{expr_str} = 0", fontsize=11)
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_aspect("equal")
-        ax.grid(True, alpha=0.3)
-        fig.tight_layout()
+        fig = go.Figure()
+        fig.add_trace(go.Contour(
+            x=x_vals.tolist(),
+            y=y_vals.tolist(),
+            z=Z.tolist(),
+            contours=dict(
+                start=0, end=0, size=1,
+                coloring='lines',
+            ),
+            line=dict(color='#378ADD', width=2),
+            showscale=False,
+            name=f'{expr_str} = 0'
+        ))
+        fig.update_layout(
+            title=f'{expr_str} = 0',
+            paper_bgcolor='#050a0f',
+            plot_bgcolor='#071828',
+            font=dict(color='#70b8f0', family='Courier New'),
+            xaxis=dict(gridcolor='#0d2a40', zerolinecolor='#1a3a55'),
+            yaxis=dict(gridcolor='#0d2a40', zerolinecolor='#1a3a55'),
+        )
 
-        plt.show()
-        plt.close()
+        html = fig.to_html(full_html=True, include_plotlyjs=True)
 
-        return f"Here's the implicit plot of {expr_str} = 0."
+        import os
+        os.makedirs("data/plots", exist_ok=True)
+        filename = f"plot_implicit_{abs(hash(expr_str))}.html"
+        path = f"data/plots/{filename}"
+        with open(path, "w") as f:
+            f.write(html)
+
+        return f"PLOT:{filename}"
+
     except Exception as e:
-        return f"I couldn't plot that: {e}"    
+        return f"I couldn't plot that: {e}"   
