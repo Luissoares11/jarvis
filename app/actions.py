@@ -375,21 +375,36 @@ def add_calendar_event(
         return f"I couldn't add that event: {e}"
 
 
-def list_events(days_ahead: int = 7) -> str:
+def list_events(days_ahead: int = 7, include_past: bool = False) -> str:
     now = _now()
     until = now + timedelta(days=days_ahead)
 
     with _conn() as con:
-        rows = con.execute(
-            "SELECT title, start_time, notes FROM events "
-            "WHERE start_time >= ? AND start_time <= ? ORDER BY start_time",
-            (now.isoformat(), until.isoformat())
-        ).fetchall()
+        if include_past:
+            rows = con.execute(
+                "SELECT title, start_time, notes FROM events "
+                "ORDER BY start_time DESC LIMIT 20",
+            ).fetchall()
+        else:
+            rows = con.execute(
+                "SELECT title, start_time, notes FROM events "
+                "ORDER BY start_time"
+            ).fetchall()
+
+    if not include_past:
+        filtered = []
+        for row in rows:
+            dt = datetime.fromisoformat(row["start_time"])
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=ZoneInfo(TIMEZONE))
+            if now <= dt <= until:
+                filtered.append(row)
+        rows = filtered
 
     if not rows:
-        return f"No events in the next {days_ahead} days."
+        return f"No events in the next {days_ahead} days." if not include_past else "No past events found."
 
-    lines = [f"Events in the next {days_ahead} days:"]
+    lines = [f"Events in the next {days_ahead} days:"] if not include_past else ["Past events:"]
     for row in rows:
         dt = datetime.fromisoformat(row["start_time"])
         lines.append(f"  - {dt.strftime('%d %b %H:%M')} — {row['title']}")
