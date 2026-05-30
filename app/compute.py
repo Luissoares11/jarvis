@@ -277,8 +277,14 @@ def plot_implicit(expr_str: str, x_range=(-2, 2), y_range=(-2, 2)) -> str:
         import plotly.graph_objects as go
         import numpy as np
 
+        if "=" in expr_str:
+            parts = expr_str.split("=", 1)
+            expr_str_parsed = f"({parts[0].strip()}) - ({parts[1].strip()})"
+        else:
+            expr_str_parsed = expr_str
+
         x_sym, y_sym = sp.symbols("x y")
-        expr = _parse_expr(expr_str)
+        expr = _parse_expr(expr_str_parsed)
         f = sp.lambdify((x_sym, y_sym), expr, modules=["numpy"])
 
         x_vals = np.linspace(*x_range, 500)
