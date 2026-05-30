@@ -16,9 +16,6 @@ from app.memory.context import make_context
 JARVIS_TOKEN = os.getenv("JARVIS_API_TOKEN", "changeme")
 security = HTTPBearer()
 
-os.makedirs("data/plots", exist_ok=True)
-app.mount("/plots", StaticFiles(directory="data/plots"), name="plots")
-
 # ── session store ─────────────────────────────────────────────
 # maps session_id → context dict
 _sessions: dict[str, dict] = {}
@@ -52,6 +49,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+os.makedirs("data/plots", exist_ok=True)
+app.mount("/plots", StaticFiles(directory="data/plots"), name="plots")
 
 app.add_middleware(
     CORSMiddleware,
