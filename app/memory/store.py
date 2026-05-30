@@ -106,6 +106,13 @@ def init_db():
                 remind_at  TEXT NOT NULL,
                 fired      INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT (datetime('now'))
+            );
+            CREATE TABLE IF NOT EXISTS notifications (
+                id         TEXT PRIMARY KEY,
+                message    TEXT NOT NULL,
+                read       INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
 );
         """)
 

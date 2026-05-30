@@ -146,11 +146,14 @@ _reminder_threads: dict[str, threading.Timer] = {}
 
 
 def _fire_reminder(reminder_id: str, message: str):
-    print(f"\n⏰ Jarvis Reminder: {message}\n")
     with _conn() as con:
         con.execute(
             "UPDATE reminders SET fired = 1 WHERE id = ?",
             (reminder_id,)
+        )
+        con.execute(
+            "INSERT INTO notifications (id, message) VALUES (?, ?)",
+            (str(uuid.uuid4()), f"⏰ Reminder: {message}")
         )
     _reminder_threads.pop(reminder_id, None)
 
