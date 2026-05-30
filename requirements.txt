@@ -7,6 +7,3 @@ sympy
 matplotlib
 numpy
 tzdata
-google-auth
-google-auth-oauthlib
-google-api-python-client

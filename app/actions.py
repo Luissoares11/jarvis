@@ -146,14 +146,11 @@ _reminder_threads: dict[str, threading.Timer] = {}
 
 
 def _fire_reminder(reminder_id: str, message: str):
+    print(f"\n⏰ Jarvis Reminder: {message}\n")
     with _conn() as con:
         con.execute(
             "UPDATE reminders SET fired = 1 WHERE id = ?",
             (reminder_id,)
-        )
-        con.execute(
-            "INSERT INTO notifications (id, message) VALUES (?, ?)",
-            (str(uuid.uuid4()), f"⏰ Reminder: {message}")
         )
     _reminder_threads.pop(reminder_id, None)
 
@@ -288,95 +285,6 @@ EVENT_TYPES = {
     "alarm":       "⏰ Alarm",
     "other":       "📅 Event",
 }
-
-
-def _get_calendar_service():
-    import os
-    from google.auth.transport.requests import Request
-    from google.oauth2.credentials import Credentials
-    from google_auth_oauthlib.flow import InstalledAppFlow
-    from googleapiclient.discovery import build
-
-    SCOPES = ["https://www.googleapis.com/auth/calendar"]
-    creds = None
-
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as f:
-            f.write(creds.to_json())
-
-    return build("googleapiclient", "v4", credentials=creds)
-
-
-def add_calendar_event(
-    title: str,
-    date_str: str,
-    time_str: str = "09:00",
-    event_type: str = "other",
-    notes: str = "",
-) -> str:
-    try:
-        dt = _parse_datetime(date_str, time_str)
-        dt_end = dt + timedelta(hours=1)
-
-        type_label = EVENT_TYPES.get(event_type.lower(), "📅 Event")
-        full_title = f"{type_label}: {title}"
-
-        # save locally first
-        with _conn() as con:
-            con.execute(
-                "INSERT INTO events (id, title, start_time, end_time, notes, created_at) "
-                "VALUES (?, ?, ?, ?, ?, datetime('now'))",
-                (
-                    str(uuid.uuid4()),
-                    full_title,
-                    dt.isoformat(),
-                    dt_end.isoformat(),
-                    notes,
-                )
-            )
-
-            # sync to Google Calendar
-            try:
-                service = _get_calendar_service()
-                event = {
-                    "summary":     full_title,
-                    "description": notes,
-                    "start": {
-                        "dateTime": dt.isoformat(),
-                        "timeZone": TIMEZONE,
-                    },
-                    "end": {
-                        "dateTime": dt_end.isoformat(),
-                        "timeZone": TIMEZONE,
-                    },
-                    "reminders": {
-                        "useDefault": False,
-                        "overrides": [
-                            {"method": "popup", "minutes": 30},
-                        ],
-                    },
-                }
-                service.events().insert(calendarId="primary", body=event).execute()
-                google_note = " Synced to Google Calendar."
-            except Exception as e:
-                google_note = ""  # silently skip instead of showing error
-        return (
-            f"Added {type_label} '{title}' on "
-            f"{dt.strftime('%d %b at %H:%M')}.{google_note}"
-        )
-    except ValueError as e:
-        return str(e)
-    except Exception as e:
-        return f"I couldn't add that event: {e}"
-
 
 def list_events(days_ahead: int = 30, include_past: bool = False, all_events: bool = False) -> str:
     now = _now()

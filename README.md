@@ -2,7 +2,7 @@
 
 > A modular, self-hosted personal AI assistant — built from scratch.
 
-Jarvis is a fully local, API-driven assistant I built to handle the things I actually need: memory, reminders, maths, football scores, weather, and a calendar that syncs to Google. No wrappers around existing assistants. No pre-built frameworks. Every layer written by hand.
+Jarvis is a fully local, API-driven assistant I built to handle the things I actually need: memory, reminders, maths, football scores, weather, and is own calendar. No wrappers around existing assistants. No pre-built frameworks. Every layer written by hand.
 
 ---
 
@@ -16,7 +16,7 @@ Jarvis is a fully local, API-driven assistant I built to handle the things I act
 
 **External data** — Live weather via Open-Meteo (no API key needed). Football fixtures, results, and standings via football-data.org. All responses are cached to avoid burning API calls.
 
-**Actions** — To-do lists, reminders with real timers, countdown timers, alarms, and calendar events with Google Calendar sync.
+**Actions** — To-do lists, reminders with real timers, countdown timers, alarms, and calendar.
 
 **API** — FastAPI server with bearer token auth and per-session context. Designed to be called from a phone UI (in progress).
 
@@ -59,7 +59,7 @@ Context is passed explicitly through the call chain — no global state, safe fo
 | Maths | SymPy + Matplotlib |
 | Weather | Open-Meteo |
 | Football | football-data.org |
-| Calendar | Google Calendar API |
+| Calendar |
 | Deployment | Proxmox VM + systemd + Tailscale |
 
 ---
