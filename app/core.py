@@ -567,8 +567,9 @@ def _handle_action_add_event(a, ctx):
 
 def _handle_action_list_events(a, ctx):
     return list_events(
-        days_ahead=a.get("days", 7),
-        include_past=a.get("include_past", False)
+        days_ahead=a.get("days", 30),
+        include_past=a.get("include_past", False),
+        all_events=a.get("all_events", False)
     )
 
 def _handle_action_delete_event(a, ctx):

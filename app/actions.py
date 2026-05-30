@@ -375,23 +375,16 @@ def add_calendar_event(
         return f"I couldn't add that event: {e}"
 
 
-def list_events(days_ahead: int = 7, include_past: bool = False) -> str:
+def list_events(days_ahead: int = 30, include_past: bool = False, all_events: bool = False) -> str:
     now = _now()
     until = now + timedelta(days=days_ahead)
 
     with _conn() as con:
-        if include_past:
-            rows = con.execute(
-                "SELECT title, start_time, notes FROM events "
-                "ORDER BY start_time DESC LIMIT 20",
-            ).fetchall()
-        else:
-            rows = con.execute(
-                "SELECT title, start_time, notes FROM events "
-                "ORDER BY start_time"
-            ).fetchall()
+        rows = con.execute(
+            "SELECT title, start_time, notes FROM events ORDER BY start_time"
+        ).fetchall()
 
-    if not include_past:
+    if not all_events and not include_past:
         filtered = []
         for row in rows:
             dt = datetime.fromisoformat(row["start_time"])
@@ -400,18 +393,36 @@ def list_events(days_ahead: int = 7, include_past: bool = False) -> str:
             if now <= dt <= until:
                 filtered.append(row)
         rows = filtered
+    elif include_past:
+        filtered = []
+        for row in rows:
+            dt = datetime.fromisoformat(row["start_time"])
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=ZoneInfo(TIMEZONE))
+            if dt < now:
+                filtered.append(row)
+        rows = sorted(filtered, key=lambda r: r["start_time"], reverse=True)[:20]
 
     if not rows:
-        return f"No events in the next {days_ahead} days." if not include_past else "No past events found."
+        if include_past:
+            return "No past events found."
+        if all_events:
+            return "No events found."
+        return f"No events in the next {days_ahead} days."
 
-    lines = [f"Events in the next {days_ahead} days:"] if not include_past else ["Past events:"]
+    if all_events:
+        lines = ["All events:"]
+    elif include_past:
+        lines = ["Past events:"]
+    else:
+        lines = [f"Events in the next {days_ahead} days:"]
+
     for row in rows:
         dt = datetime.fromisoformat(row["start_time"])
         lines.append(f"  - {dt.strftime('%d %b %H:%M')} — {row['title']}")
         if row["notes"]:
             lines.append(f"    {row['notes']}")
     return "\n".join(lines)
-
 
 def set_alarm(time_str: str, label: str = "Wake up") -> str:
     return add_reminder(label, time_str, "today")
