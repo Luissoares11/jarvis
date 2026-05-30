@@ -58,6 +58,7 @@ Actions:
 {"action": "action_complete_todo", "ref": "task name or number"}
 {"action": "action_delete_todo", "ref": "task name or number"}
 {"action": "action_add_reminder", "message": "reminder text", "time": "HH:MM", "date": "today|tomorrow|DD/MM/YYYY"}
+{"action": "action_delete_reminder", "message": "reminder message to delete"}
 {"action": "action_list_reminders"}
 {"action": "action_set_timer", "duration": "10 minutes", "label": "optional label"}
 {"action": "action_set_alarm", "time": "07:30"}

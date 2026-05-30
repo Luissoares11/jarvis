@@ -546,6 +546,18 @@ def _handle_action_add_reminder(a, ctx):
 def _handle_action_list_reminders(a, ctx):
     return list_reminders()
 
+def _handle_action_delete_reminder(a, ctx):
+    from .memory.store import _conn
+    message = a.get("message", "")
+    with _conn() as con:
+        row = con.execute(
+            "SELECT id, message FROM reminders WHERE message LIKE ? AND fired = 0",
+            (f"%{message}%",)
+        ).fetchone()
+        if row:
+            con.execute("DELETE FROM reminders WHERE id = ?", (row["id"],))
+            return f"{say('confirm')} Removed reminder '{row['message']}'."
+    return "I couldn't find that reminder."
 
 def _handle_action_set_timer(a, ctx):
     return set_timer(a["duration"], a.get("label", "Timer"))
@@ -638,6 +650,7 @@ _HANDLERS = {
     "action_complete_todo":                     _handle_action_complete_todo,
     "action_delete_todo":                       _handle_action_delete_todo,
     "action_add_reminder":                      _handle_action_add_reminder,
+    "action_delete_reminder":                   _handle_action_delete_reminder,
     "action_list_reminders":                    _handle_action_list_reminders,
     "action_set_timer":                         _handle_action_set_timer,
     "action_set_alarm":                         _handle_action_set_alarm,
