@@ -64,6 +64,7 @@ Actions:
 {"action": "action_set_alarm", "time": "07:30"}
 {"action": "action_add_event", "title": "descriptive event title extracted from input", "event_type": "exam|appointment|anniversary|birthday|meeting|deadline|alarm|other", "date": "DD/MM/YYYY or today or tomorrow", "time": "HH:MM in 24h format, default 09:00 if not specified", "notes": "optional"}
 {"action": "action_delete_event", "title": "event title to delete"}
+{"action": "action_edit_event", "title": "existing event title", "new_title": "optional", "new_date": "optional DD/MM/YYYY", "new_time": "optional HH:MM", "new_notes": "optional"}
 {"action": "action_list_events", "days": 30}                            
 {"action": "action_list_events", "days": 0, "include_past": true}       
 {"action": "action_list_events", "all_events": true}                     
