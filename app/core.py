@@ -45,7 +45,7 @@ from .actions import (
     add_todo, list_todos, complete_todo, delete_todo,
     add_reminder, list_reminders, load_pending_reminders,
     set_timer, set_alarm,
-    list_events,
+    add_event, delete_event, edit_event, list_events,
 )
 
 
@@ -568,7 +568,7 @@ def _handle_action_set_alarm(a, ctx):
 
 
 def _handle_action_add_event(a, ctx):
-    return add_calendar_event(
+    return add_event(
         title=a.get("title", a.get("event_type", "Event")),
         date_str=a["date"],
         time_str=a.get("time", "09:00"),
@@ -576,6 +576,18 @@ def _handle_action_add_event(a, ctx):
         notes=a.get("notes", ""),
     )
 
+def _handle_action_delete_event(a, ctx):
+    return delete_event(a.get("title", ""))
+
+
+def _handle_action_edit_event(a, ctx):
+    return edit_event(
+        title=a.get("title", ""),
+        new_title=a.get("new_title"),
+        new_date_str=a.get("new_date"),
+        new_time_str=a.get("new_time"),
+        new_notes=a.get("new_notes"),
+    )
 
 def _handle_action_list_events(a, ctx):
     return list_events(
@@ -657,6 +669,7 @@ _HANDLERS = {
     "action_add_event":                         _handle_action_add_event,
     "action_list_events":                       _handle_action_list_events,
     "action_delete_event":                      _handle_action_delete_event,
+    "action_edit_event":                        _handle_action_edit_event,
 }
 
 

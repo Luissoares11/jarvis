@@ -272,7 +272,7 @@ def set_timer(duration_str: str, label: str = "Timer") -> str:
         return f"I couldn't set that timer: {e}"
 
 
-# ── google calendar ───────────────────────────────────────────
+# ── calendar ───────────────────────────────────────────
 
 EVENT_TYPES = {
     "exam":        "🎓 Exam",
@@ -285,7 +285,95 @@ EVENT_TYPES = {
     "alarm":       "⏰ Alarm",
     "other":       "📅 Event",
 }
+def add_event(
+    title: str,
+    date_str: str,
+    time_str: str = "09:00",
+    event_type: str = "other",
+    notes: str = "",
+) -> str:
+    try:
+        dt = _parse_datetime(date_str, time_str)
+        dt_end = dt + timedelta(hours=1)
 
+        type_label = EVENT_TYPES.get(event_type.lower(), "📅 Event")
+        full_title = f"{type_label}: {title}"
+
+        with _conn() as con:
+            con.execute(
+                "INSERT INTO events (id, title, start_time, end_time, notes, created_at) "
+                "VALUES (?, ?, ?, ?, ?, datetime('now'))",
+                (
+                    str(uuid.uuid4()),
+                    full_title,
+                    dt.isoformat(),
+                    dt_end.isoformat(),
+                    notes,
+                )
+            )
+
+        return (
+            f"Added {type_label} '{title}' on "
+            f"{dt.strftime('%d %b at %H:%M')}."
+        )
+    except ValueError as e:
+        return str(e)
+    except Exception as e:
+        return f"I couldn't add that event: {e}"
+    
+def delete_event(title: str) -> str:
+    with _conn() as con:
+        row = con.execute(
+            "SELECT id, title FROM events WHERE title LIKE ?",
+            (f"%{title}%",)
+        ).fetchone()
+        if row:
+            con.execute("DELETE FROM events WHERE id = ?", (row["id"],))
+            return f"Removed event '{row['title']}'."
+    return "I couldn't find that event."
+
+def edit_event(
+    title: str,
+    new_title: str = None,
+    new_date_str: str = None,
+    new_time_str: str = None,
+    new_notes: str = None,
+) -> str:
+    try:
+        with _conn() as con:
+            row = con.execute(
+                "SELECT id, title, start_time, end_time, notes FROM events WHERE title LIKE ?",
+                (f"%{title}%",)
+            ).fetchone()
+
+            if not row:
+                return "I couldn't find that event."
+
+            current_dt = datetime.fromisoformat(row["start_time"])
+
+            if new_date_str or new_time_str:
+                date_str = new_date_str or current_dt.strftime("%d/%m/%Y")
+                time_str = new_time_str or current_dt.strftime("%H:%M")
+                new_dt = _parse_datetime(date_str, time_str)
+                new_dt_end = new_dt + timedelta(hours=1)
+            else:
+                new_dt = current_dt
+                new_dt_end = datetime.fromisoformat(row["end_time"])
+
+            final_title = new_title if new_title else row["title"]
+            final_notes = new_notes if new_notes is not None else row["notes"]
+
+            con.execute(
+                "UPDATE events SET title = ?, start_time = ?, end_time = ?, notes = ? WHERE id = ?",
+                (final_title, new_dt.isoformat(), new_dt_end.isoformat(), final_notes, row["id"])
+            )
+
+        return f"Updated event '{final_title}'."
+    except ValueError as e:
+        return str(e)
+    except Exception as e:
+        return f"I couldn't update that event: {e}"
+        
 def list_events(days_ahead: int = 30, include_past: bool = False, all_events: bool = False) -> str:
     now = _now()
     until = now + timedelta(days=days_ahead)
