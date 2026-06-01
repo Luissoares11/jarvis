@@ -91,3 +91,6 @@ def get_notifications(token: str = Depends(verify_token)):
         con.commit()
     return {"notifications": [{"id": r["id"], "message": r["message"]} for r in rows]}
     
+@app.get("/health")
+def health():
+    return {"status": "ok"}
