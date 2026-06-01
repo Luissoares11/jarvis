@@ -226,7 +226,7 @@ def load_pending_reminders():
 
 # ── timers ────────────────────────────────────────────────────
 
-_timer_threads: dict[str, threading.Timer] = {}
+_timer_threads: dict[str, dict] = {}
 
 
 def _fire_timer(timer_id: str, label: str):
@@ -256,10 +256,12 @@ def set_timer(duration_str: str, label: str = "Timer") -> str:
                 return "I couldn't understand that duration."
 
         timer_id = str(uuid.uuid4())
+        end_time = datetime.now() + timedelta(seconds=seconds)  
         timer = threading.Timer(seconds, _fire_timer, args=[timer_id, label])
         timer.daemon = True
         timer.start()
-        _timer_threads[timer_id] = timer
+        _timer_threads[timer_id] = {"timer": timer, "label": label, "ends_at": end_time.isoformat()}  # updated
+
 
         mins = seconds // 60
         secs = seconds % 60

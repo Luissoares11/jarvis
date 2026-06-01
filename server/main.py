@@ -94,3 +94,20 @@ def get_notifications(token: str = Depends(verify_token)):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.get("/timers")
+def get_timers(token: str = Depends(verify_token)):
+    from app.actions import _timer_threads
+    now = datetime.now()
+    result = []
+    for timer_id, data in _timer_threads.items():
+        ends_at = datetime.fromisoformat(data["ends_at"])
+        remaining = (ends_at - now).total_seconds()
+        if remaining > 0:
+            result.append({
+                "id": timer_id,
+                "label": data["label"],
+                "ends_at": data["ends_at"],
+                "remaining_seconds": int(remaining)
+            })
+    return {"timers": result}
