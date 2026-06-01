@@ -418,7 +418,7 @@ def list_events(days_ahead: int = 30, include_past: bool = False, all_events: bo
 
     for row in rows:
         dt = datetime.fromisoformat(row["start_time"])
-        lines.append(f"  - {dt.strftime('%d %b %H:%M')} — {row['title']}")
+        lines.append(f"  - {dt.strftime('%d %b %Y %H:%M')} — {row['title']}")
         if row["notes"]:
             lines.append(f"    {row['notes']}")
     return "\n".join(lines)
