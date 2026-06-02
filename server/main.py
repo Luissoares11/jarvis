@@ -99,7 +99,8 @@ def health():
 @app.get("/timers")
 def get_timers(token: str = Depends(verify_token)):
     from app.actions import _timer_threads
-    now = datetime.now()
+    from app.actions import _now
+    now = _now() 
     result = []
     for timer_id, data in _timer_threads.items():
         ends_at = datetime.fromisoformat(data["ends_at"])
