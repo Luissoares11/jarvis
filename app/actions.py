@@ -256,7 +256,7 @@ def set_timer(duration_str: str, label: str = "Timer") -> str:
                 return "I couldn't understand that duration."
 
         timer_id = str(uuid.uuid4())
-        end_time = datetime.now() + timedelta(seconds=seconds)  
+        end_time = _now() + timedelta(seconds=seconds) 
         timer = threading.Timer(seconds, _fire_timer, args=[timer_id, label])
         timer.daemon = True
         timer.start()
