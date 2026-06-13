@@ -1,109 +1,124 @@
-# Jarvis
+# Jarvis — Backend
 
-> A modular, self-hosted personal AI assistant — built from scratch.
+> A modular, self-hosted personal AI assistant built from scratch.
 
-Jarvis is a fully local, API-driven assistant I built to handle the things I actually need: memory, reminders, maths, football scores, weather, and is own calendar. No wrappers around existing assistants. No pre-built frameworks. Every layer written by hand.
-
----
-
-## What it does
-
-**Memory** — Jarvis remembers facts about people and things across sessions. Ask it about someone and it'll pull from a structured SQLite store, resolve pronouns, follow relationship chains, and detect conflicts when you try to update something it already knows.
-
-**Natural language understanding** — Input goes straight to Claude Haiku for intent parsing. No regex pipelines, no hand-written grammars. The parsed action is cached locally so repeated phrases are free and instant. Typos, rephrasing, different word order — it handles it.
-
-**Computation** — Symbolic maths via SymPy. Derivatives, integrals, limits, equation solving, unit conversions, and function plotting.
-
-**External data** — Live weather via Open-Meteo (no API key needed). Football fixtures, results, and standings via football-data.org. All responses are cached to avoid burning API calls.
-
-**Actions** — To-do lists, reminders with real timers, countdown timers, alarms, and calendar.
-
-**API** — FastAPI server with bearer token auth and per-session context. Designed to be called from a phone UI (in progress).
+Jarvis is a fully local, API-driven assistant designed to handle real personal productivity needs: memory, reminders, timers, maths, calendar, weather, and football data. No wrappers around existing assistants. No pre-built frameworks. Every layer written by hand.
 
 ---
 
-## Architecture
+## Quick Start
 
-```
-user input
-    │
-    ▼
- hardcoded check          ← greetings, social (free, no API call)
-    │
-    ▼
- pattern cache lookup     ← exact + fuzzy match on confirmed patterns
-    │
-    ▼
- LLM intent parser        ← Claude Haiku returns structured action JSON
-    │
-    ▼
- handler registry         ← dispatches to the right module
-    │
-    ▼
- memory / compute /       ← SQLite, SymPy, httpx, Google Calendar
- external / actions
+### Requirements
+
+- Python 3.12+
+- Anthropic API key (for Claude Haiku intent parsing)
+- Optional: football-data.org API key
+
+### Setup
+
+```bash
+git clone https://github.com/Luissoares11/jarvis
+cd jarvis
+pip install -r requirements.txt
+cp .env.example .env  # fill in your keys
 ```
 
-Context is passed explicitly through the call chain — no global state, safe for concurrent sessions.
+### Environment variables
+
+```env
+ANTHROPIC_API_KEY=your_key_here
+JARVIS_API_TOKEN=your_bearer_token
+FOOTBALL_API_KEY=your_key_here       # optional
+TIMEZONE=Europe/Lisbon
+```
+
+### Running locally
+
+```bash
+python -m uvicorn server.main:app --host 0.0.0.0 --port 8000
+```
+
+### Running via systemd (production)
+
+```bash
+sudo systemctl start jarvis
+sudo systemctl status jarvis
+journalctl -u jarvis -f
+```
+
+---
+
+## Project Structure
+
+```
+jarvis/
+├── app/
+│   ├── core.py           # handler registry + process_input entry point
+│   ├── llm.py            # intent parsing via Claude Haiku + pattern cache
+│   ├── actions.py        # todos, reminders, timers, calendar events
+│   ├── compute.py        # symbolic maths (SymPy) + plotting (Plotly)
+│   ├── external.py       # weather (Open-Meteo) + football (football-data.org)
+│   ├── personality.py    # response templates for social/greeting inputs
+│   ├── reasoning.py      # conflict detection + inference
+│   ├── relations.py      # fact relation definitions
+│   └── memory/
+│       ├── api.py        # high-level memory operations
+│       ├── store.py      # SQLite layer + DB init
+│       ├── context.py    # per-session context factory
+│       └── resolver.py   # entity + pronoun resolution
+├── server/
+│   └── main.py           # FastAPI app, routes, auth, lifespan
+├── cli/
+│   └── main.py           # local terminal interface for testing
+├── data/
+│   ├── jarvis.db         # SQLite database (git-ignored)
+│   └── plots/            # generated Plotly HTML files
+├── config.py
+└── requirements.txt
+```
+
+---
+
+## Deployment
+
+The backend runs on a Proxmox VM (Ubuntu Server 24.04), accessed remotely via Tailscale.
+
+- **Tailscale IP:** `<your-tailscale-ip>`
+- **Port:** `8000`
+- **Service user:** `your-user`
+- **Service file:** `your-file-path`
+
+### systemd service
+
+```ini
+[Unit]
+Description=Jarvis AI Assistant
+After=network.target
+
+[Service]
+Type=simple
+User=jarvisserver
+WorkingDirectory=/home/jarvisserver/jarvis
+ExecStart=/usr/bin/python3 -m uvicorn server.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+EnvironmentFile=/home/jarvisserver/jarvis/.env
+
+[Install]
+WantedBy=multi-user.target
+```
 
 ---
 
 ## Stack
 
-| Layer | Tech |
-|---|---|
-| Language | Python 3.12 |
-| API server | FastAPI + Uvicorn |
-| Intent parsing | Claude Haiku (Anthropic) |
-| Memory | SQLite (WAL mode, indexed) |
-| Maths | SymPy + Matplotlib |
-| Weather | Open-Meteo |
-| Football | football-data.org |
-| Calendar |
-| Deployment | Proxmox VM + systemd + Tailscale |
-
----
-
-## Project structure
-
-```
-jarvis/
-├── app/
-│   ├── core.py          # handler registry + process_input
-│   ├── llm.py           # intent parsing + pattern cache
-│   ├── actions.py       # todos, reminders, timers, calendar
-│   ├── compute.py       # symbolic maths + plotting
-│   ├── external.py      # weather + football
-│   ├── personality.py   # response templates
-│   ├── reasoning.py     # conflict detection + inference
-│   ├── relations.py     # fact relation definitions
-│   └── memory/
-│       ├── api.py       # high-level memory operations
-│       ├── store.py     # SQLite layer
-│       ├── context.py   # per-session context
-│       └── resolver.py  # entity + pronoun resolution
-├── cli/
-│   └── main.py          # local terminal interface
-├── main.py              # FastAPI entrypoint
-├── config.py
-└── requirements.txt
-```
-
-## Roadmap
-
-- [x] Core memory system — facts, collections, aliases
-- [x] Intelligence layers — conflict detection, pronoun resolution, inference
-- [x] Computation engine — SymPy + plotting
-- [x] External data — weather, football
-- [x] Actions — todos, reminders, timers, Google Calendar
-- [x] API server — FastAPI, auth, session context
-- [x] Server deployment — Proxmox VM, systemd, Tailscale
-- [x] Desktop UI — desktop tray
-- [ ] Phone UI — mobile chat interface
-- [ ] Voice — Whisper STT, local TTS, wake word
-- [ ] Device control — smart home, scripts, automations
-- [ ] Advanced reasoning — multi-step planning, proactive suggestions
-
----
-
-*Built by Luís Soares*
+| Layer          | Tech                          |
+|----------------|-------------------------------|
+| Language       | Python 3.12                   |
+| API server     | FastAPI + Uvicorn             |
+| Intent parsing | Claude Haiku (Anthropic)      |
+| Memory         | SQLite (WAL mode)             |
+| Maths          | SymPy + Plotly                |
+| Weather        | Open-Meteo (no key needed)    |
+| Football       | football-data.org             |
+| Deployment     | Proxmox VM + systemd + Tailscale |
