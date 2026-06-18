@@ -150,6 +150,15 @@ class TestTasks:
         data = client.get("/tasks", headers=AUTH).json()
         assert len(data["tasks"]) == 3
 
+    def test_missing_token_is_rejected(self, client):
+        """/tasks without a token should return 401."""
+        r = client.get("/tasks")
+        assert r.status_code == 401
+
+    def test_wrong_token_is_rejected(self, client):
+        """/tasks with a bad token should return 401."""
+        r = client.get("/tasks", headers={"Authorization": "Bearer wrongtoken"})
+        assert r.status_code == 401
 
 # ── /reminders ────────────────────────────────────────────────
 
@@ -205,7 +214,7 @@ class TestEvents:
         assert r.json() == {"events": []}
 
     def test_returns_future_event(self, client):
-        _insert_event("🎓 Exam: Maths", start="2099-06-30T10:00:00")
+        _insert_event("🎓 Exam: Maths", start="2099-06-30T10:00:00+01:00")
         data = client.get("/events", headers=AUTH).json()
         assert len(data["events"]) == 1
         assert "Maths" in data["events"][0]["title"]
@@ -217,11 +226,20 @@ class TestEvents:
         assert r.json() == {"events": []}
 
     def test_response_has_expected_fields(self, client):
-        _insert_event("Meeting", start="2099-07-01T14:00:00")
+        _insert_event("Meeting", start="2099-07-01T14:00:00+01:00")
         event = client.get("/events", headers=AUTH).json()["events"][0]
         for field in ("id", "title", "start_time", "end_time", "notes"):
             assert field in event, f"Missing field: {field}"
 
+    # _insert_event helper — add timezone to the start time
+    def _insert_event(title: str, start: str = "2099-12-31T10:00:00+01:00"):
+        import uuid
+        with _conn() as con:
+            con.execute(
+                "INSERT INTO events (id, title, start_time, end_time, notes, created_at) "
+                "VALUES (?, ?, ?, ?, '', datetime('now'))",
+                (str(uuid.uuid4()), title, start, start)
+        ) 
 
 # ── /chat ─────────────────────────────────────────────────────
 
