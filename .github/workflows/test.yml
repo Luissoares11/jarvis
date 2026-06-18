@@ -27,5 +27,5 @@ jobs:
       - name: Run tests
         env:
           JARVIS_API_TOKEN: ${{ secrets.JARVIS_API_TOKEN }}
-          MEMORY_FILE: /tmp/jarvis_test.db
+          MEMORY_FILE: /tmp/jarvis_test
         run: pytest tests/ -v
