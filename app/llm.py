@@ -154,7 +154,6 @@ def _call_llm(user_input: str) -> dict:
 
         print(f"[LLM RAW] input='{user_input}' → raw='{raw}'")
 
-        # extract only the JSON object, ignore anything after it
         match = re.search(r'\{.*\}', raw, re.DOTALL)
         if match:
             raw = match.group(0)
@@ -183,39 +182,24 @@ def _fuzzy_match(phrase: str, confirmed_patterns: list) -> dict | None:
 # ── main entry point ──────────────────────────────────────────
 
 def interpret(user_input: str) -> dict:
-    """
-    Resolve user input to an action dict.
-
-    Order:
-      1. Hardcoded social/greeting check (free, instant)
-      2. Exact cache hit (free, instant)
-      3. Fuzzy cache hit (free, instant)
-      4. LLM call (paid, ~300ms) → auto-cache on success
-    """
     phrase = user_input.lower().strip()
 
-    # 1 — hardcoded fast path
     hardcoded = _check_hardcoded(phrase)
     if hardcoded:
         return hardcoded
 
-    # 2 — exact cache hit
     exact = db_get_exact_pattern(phrase)
     if exact:
         return exact
 
-    # 3 — fuzzy cache hit
     all_patterns = db_get_all_confirmed_patterns()
     fuzzy = _fuzzy_match(phrase, all_patterns)
     if fuzzy:
-        # still run LLM to extract fresh parameters (dates, names, etc.)
-        # but use fuzzy hit as a confidence signal — if LLM agrees, cache it
         action = _call_llm(user_input)
         if action.get("action") not in ("unknown", None):
             db_save_pattern(phrase, action, confirmed=True)
         return action
 
-    # 4 — LLM fallback, auto-cache on success
     action = _call_llm(user_input)
 
     if action.get("action") not in ("unknown", None):

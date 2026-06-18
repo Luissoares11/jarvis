@@ -113,3 +113,52 @@ def get_timers(token: str = Depends(verify_token)):
                 "remaining_seconds": int(remaining)
             })
     return {"timers": result}
+
+@app.get("/tasks")
+def get_tasks(token: str = Depends(verify_token)):
+    from app.memory.store import _conn
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT id, task, priority, done, created_at FROM todos WHERE done = 0 "
+            "ORDER BY priority DESC, created_at"
+        ).fetchall()
+    return {"tasks": [dict(r) for r in rows]}
+
+
+@app.get("/reminders")
+def get_reminders(token: str = Depends(verify_token)):
+    from app.memory.store import _conn
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT id, message, remind_at FROM reminders WHERE fired = 0 "
+            "ORDER BY remind_at"
+        ).fetchall()
+    return {"reminders": [dict(r) for r in rows]}
+
+
+@app.get("/events")
+def get_events(token: str = Depends(verify_token)):
+    from app.memory.store import _conn
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo("Europe/Lisbon"))
+    until = now + timedelta(days=60)
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT id, title, start_time, end_time, notes FROM events "
+            "ORDER BY start_time"
+        ).fetchall()
+    events = []
+    for r in rows:
+        dt = datetime.fromisoformat(r["start_time"])
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ZoneInfo("Europe/Lisbon"))
+        if now <= dt <= until:
+            events.append({
+                "id": r["id"],
+                "title": r["title"],
+                "start_time": r["start_time"],
+                "end_time": r["end_time"],
+                "notes": r["notes"],
+            })
+    return {"events": events}

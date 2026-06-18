@@ -42,7 +42,7 @@ def resolve_entity(name: str):
     if not name:
         return None
 
-    aliases = db_get_aliases()  # ← was: load_store()["aliases"]
+    aliases = db_get_aliases()
     ref = clean_text(name)
 
     if ref in _ALL_PRONOUNS:
