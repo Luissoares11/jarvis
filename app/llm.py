@@ -152,7 +152,6 @@ def _call_llm(user_input: str) -> dict:
         raw = response.content[0].text.strip()
         raw = re.sub(r"```json|```", "", raw).strip()
 
-        print(f"[LLM RAW] input='{user_input}' → raw='{raw}'")
 
         match = re.search(r'\{.*\}', raw, re.DOTALL)
         if match:

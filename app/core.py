@@ -723,7 +723,6 @@ def process_input(user_input: str, ctx: dict = None) -> str:
     action_data = interpret(raw)
     action_data["raw"] = raw
 
-    print(f"[DEBUG] input='{raw}' → action={action_data}")
 
     response = handle_action(action_data, ctx)
 
