@@ -1,5 +1,7 @@
 # Jarvis — Backend
 
+![Tests](https://github.com/Luissoares11/jarvis/actions/workflows/test.yml/badge.svg)
+
 > A modular, self-hosted personal AI assistant built from scratch.
 
 Jarvis is a fully local, API-driven assistant designed to handle real personal productivity needs: memory, reminders, timers, maths, calendar, weather, and football data. No wrappers around existing assistants. No pre-built frameworks. Every layer written by hand.
