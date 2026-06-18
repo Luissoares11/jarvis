@@ -25,33 +25,22 @@ AUTH  = {"Authorization": f"Bearer {TOKEN}"}
 
 @pytest.fixture(autouse=True)
 def clean_db():
-    """
-    Runs before every test.
-    Wipes the tables we touch so tests don't bleed into each other.
-    autouse=True means every test gets this automatically.
-    """
     init_db()
     with _conn() as con:
         con.execute("DELETE FROM todos")
         con.execute("DELETE FROM reminders")
         con.execute("DELETE FROM events")
         con.execute("DELETE FROM notifications")
-    yield  # test runs here
-    # nothing to do after — next test gets a fresh clean_db call
+    yield
 
 
 @pytest.fixture
 def client():
-    """
-    A TestClient wraps the FastAPI app and lets us make HTTP requests
-    without actually starting a server. Fast and isolated.
-    """
     with TestClient(app) as c:
         yield c
 
 
 def _insert_task(task: str, priority: str = "normal"):
-    """Helper — insert a todo row directly into the DB."""
     import uuid
     with _conn() as con:
         con.execute(
@@ -61,9 +50,13 @@ def _insert_task(task: str, priority: str = "normal"):
         )
 
 
-def _insert_event(title: str, start: str = "2099-12-31T10:00:00"):
-    """Helper — insert a future event so it appears in /events."""
+def _insert_event(title: str, start: str = None):
     import uuid
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    if start is None:
+        dt = datetime.now(ZoneInfo("Europe/Lisbon")) + timedelta(days=3)
+        start = dt.isoformat()
     with _conn() as con:
         con.execute(
             "INSERT INTO events (id, title, start_time, end_time, notes, created_at) "
@@ -91,14 +84,14 @@ class TestHealth:
 
 class TestAuth:
     def test_missing_token_is_rejected(self, client):
-        """/tasks without a token should return 403."""
+        """/tasks without a token should return 401."""
         r = client.get("/tasks")
-        assert r.status_code == 403
+        assert r.status_code == 401
 
     def test_wrong_token_is_rejected(self, client):
-        """/tasks with a bad token should return 403."""
+        """/tasks with a bad token should return 401."""
         r = client.get("/tasks", headers={"Authorization": "Bearer wrongtoken"})
-        assert r.status_code == 403
+        assert r.status_code == 401
 
     def test_correct_token_is_accepted(self, client):
         """A correct token should get through."""
@@ -151,14 +144,13 @@ class TestTasks:
         assert len(data["tasks"]) == 3
 
     def test_missing_token_is_rejected(self, client):
-        """/tasks without a token should return 401."""
         r = client.get("/tasks")
         assert r.status_code == 401
 
     def test_wrong_token_is_rejected(self, client):
-        """/tasks with a bad token should return 401."""
         r = client.get("/tasks", headers={"Authorization": "Bearer wrongtoken"})
         assert r.status_code == 401
+
 
 # ── /reminders ────────────────────────────────────────────────
 
@@ -214,32 +206,23 @@ class TestEvents:
         assert r.json() == {"events": []}
 
     def test_returns_future_event(self, client):
-        _insert_event("🎓 Exam: Maths", start="2099-06-30T10:00:00+01:00")
+        _insert_event("🎓 Exam: Maths")
         data = client.get("/events", headers=AUTH).json()
         assert len(data["events"]) == 1
         assert "Maths" in data["events"][0]["title"]
 
     def test_past_events_are_excluded(self, client):
         """Events in the past should not appear in the default response."""
-        _insert_event("Old concert", start="2000-01-01T20:00:00")
+        _insert_event("Old concert", start="2000-01-01T20:00:00+01:00")
         r = client.get("/events", headers=AUTH)
         assert r.json() == {"events": []}
 
     def test_response_has_expected_fields(self, client):
-        _insert_event("Meeting", start="2099-07-01T14:00:00+01:00")
+        _insert_event("Meeting")
         event = client.get("/events", headers=AUTH).json()["events"][0]
         for field in ("id", "title", "start_time", "end_time", "notes"):
             assert field in event, f"Missing field: {field}"
 
-    # _insert_event helper — add timezone to the start time
-    def _insert_event(title: str, start: str = "2099-12-31T10:00:00+01:00"):
-        import uuid
-        with _conn() as con:
-            con.execute(
-                "INSERT INTO events (id, title, start_time, end_time, notes, created_at) "
-                "VALUES (?, ?, ?, ?, '', datetime('now'))",
-                (str(uuid.uuid4()), title, start, start)
-        ) 
 
 # ── /chat ─────────────────────────────────────────────────────
 
