@@ -145,7 +145,7 @@ def get_events(token: str = Depends(verify_token)):
     until = now + timedelta(days=60)
     with _conn() as con:
         rows = con.execute(
-            "SELECT id, title, start_time, end_time, notes FROM events "
+            "SELECT id, title, type, start_time, end_time, notes FROM events "
             "ORDER BY start_time"
         ).fetchall()
     events = []
@@ -157,6 +157,7 @@ def get_events(token: str = Depends(verify_token)):
             events.append({
                 "id": r["id"],
                 "title": r["title"],
+                "type": r["type"],
                 "start_time": r["start_time"],
                 "end_time": r["end_time"],
                 "notes": r["notes"],
