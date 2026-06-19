@@ -8,7 +8,8 @@ import sys
 import os
 import pytest
 
-# make sure imports resolve from the repo root
+os.environ["MEMORY_FILE"] = "/tmp/jarvis_test_db"
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from fastapi.testclient import TestClient
