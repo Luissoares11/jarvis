@@ -587,6 +587,7 @@ def _handle_action_edit_event(a, ctx):
         new_date_str=a.get("new_date"),
         new_time_str=a.get("new_time"),
         new_notes=a.get("new_notes"),
+        new_type=a.get("new_type"),
     )
 
 def _handle_action_list_events(a, ctx):

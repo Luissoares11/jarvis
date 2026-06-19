@@ -287,6 +287,7 @@ EVENT_TYPES = {
     "alarm":       "⏰ Alarm",
     "other":       "📅 Event",
 }
+
 def add_event(
     title: str,
     date_str: str,
@@ -299,15 +300,15 @@ def add_event(
         dt_end = dt + timedelta(hours=1)
 
         type_label = EVENT_TYPES.get(event_type.lower(), "📅 Event")
-        full_title = f"{type_label}: {title}"
 
         with _conn() as con:
             con.execute(
-                "INSERT INTO events (id, title, start_time, end_time, notes, created_at) "
-                "VALUES (?, ?, ?, ?, ?, datetime('now'))",
+                "INSERT INTO events (id, title, type, start_time, end_time, notes, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
                 (
                     str(uuid.uuid4()),
-                    full_title,
+                    title,
+                    event_type.lower(),
                     dt.isoformat(),
                     dt_end.isoformat(),
                     notes,
@@ -340,11 +341,12 @@ def edit_event(
     new_date_str: str = None,
     new_time_str: str = None,
     new_notes: str = None,
+    new_type: str = None,
 ) -> str:
     try:
         with _conn() as con:
             row = con.execute(
-                "SELECT id, title, start_time, end_time, notes FROM events WHERE title LIKE ?",
+                "SELECT id, title, type, start_time, end_time, notes FROM events WHERE title LIKE ?",
                 (f"%{title}%",)
             ).fetchone()
 
@@ -364,10 +366,11 @@ def edit_event(
 
             final_title = new_title if new_title else row["title"]
             final_notes = new_notes if new_notes is not None else row["notes"]
+            final_type  = new_type.lower() if new_type else row["type"]
 
             con.execute(
-                "UPDATE events SET title = ?, start_time = ?, end_time = ?, notes = ? WHERE id = ?",
-                (final_title, new_dt.isoformat(), new_dt_end.isoformat(), final_notes, row["id"])
+                "UPDATE events SET title = ?, type = ?, start_time = ?, end_time = ?, notes = ? WHERE id = ?",
+                (final_title, final_type, new_dt.isoformat(), new_dt_end.isoformat(), final_notes, row["id"])
             )
 
         return f"Updated event '{final_title}'."
@@ -382,7 +385,7 @@ def list_events(days_ahead: int = 30, include_past: bool = False, all_events: bo
 
     with _conn() as con:
         rows = con.execute(
-            "SELECT title, start_time, notes FROM events ORDER BY start_time"
+            "SELECT title, type, start_time, notes FROM events ORDER BY start_time"
         ).fetchall()
 
     if not all_events and not include_past:
@@ -420,7 +423,8 @@ def list_events(days_ahead: int = 30, include_past: bool = False, all_events: bo
 
     for row in rows:
         dt = datetime.fromisoformat(row["start_time"])
-        lines.append(f"  - {dt.strftime('%d %b %Y %H:%M')} — {row['title']}")
+        type_label = EVENT_TYPES.get(row["type"], "📅 Event")
+        lines.append(f"  - {dt.strftime('%d %b %Y %H:%M')} — {type_label}: {row['title']}")
         if row["notes"]:
             lines.append(f"    {row['notes']}")
     return "\n".join(lines)

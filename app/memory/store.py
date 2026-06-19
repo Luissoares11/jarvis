@@ -63,12 +63,13 @@ def init_db():
             );
 
             CREATE TABLE IF NOT EXISTS events (
-                id         TEXT PRIMARY KEY,
-                title      TEXT NOT NULL,
-                start_time TEXT,
-                end_time   TEXT,
-                notes      TEXT,
-                created_at TEXT DEFAULT (datetime('now'))
+                id          TEXT PRIMARY KEY,
+                title       TEXT NOT NULL,
+                type        TEXT DEFAULT 'other',
+                start_time  TEXT,
+                end_time    TEXT,
+                notes       TEXT,
+                created_at  TEXT DEFAULT (datetime('now'))
             );
 
             CREATE TABLE IF NOT EXISTS computations (
