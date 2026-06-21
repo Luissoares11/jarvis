@@ -118,6 +118,13 @@ def init_db():
                           
             """)
 
+def _ensure_todo_columns():
+    with _conn() as con:
+        cols = [r["name"] for r in con.execute("PRAGMA table_info(todos)").fetchall()]
+        if "board_id" not in cols:
+            con.execute("ALTER TABLE todos ADD COLUMN board_id TEXT REFERENCES boards(id)")
+        if "due_time" not in cols:
+            con.execute("ALTER TABLE todos ADD COLUMN due_time TEXT")
 
 # ── facts ─────────────────────────────────────────────────────
 
