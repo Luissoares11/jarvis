@@ -55,90 +55,84 @@ def _parse_datetime(date_str: str, time_str: str = None) -> datetime:
 
 # ── todos ─────────────────────────────────────────────────────
 
-def add_todo(task: str, priority: str = "normal") -> str:
-    with _conn() as con:
-        con.execute(
-            "INSERT INTO todos (id, task, priority, done, created_at) "
-            "VALUES (?, ?, ?, 0, datetime('now'))",
-            (str(uuid.uuid4()), task, priority)
-        )
-    return f"Added to your list: '{task}'."
+# ── todos ─────────────────────────────────────────────────────
+
+def add_todo_to_board_by_name(board_name: str, task: str, priority: str = "normal", due_time: str | None = None) -> str:
+    from app.memory.store import find_board_by_name, add_todo_to_board
+    board = find_board_by_name(board_name)
+    if not board:
+        return f"I couldn't find a '{board_name}' board. Want me to create it?"
+    add_todo_to_board(board["id"], task, priority, due_time)
+    when = f" at {due_time}" if due_time else ""
+    return f"Added '{task}'{when} to {board['title']}."
 
 
-def list_todos(show_done: bool = False) -> str:
+def list_todos_by_board_name(board_name: str, show_done: bool = False) -> str:
+    from app.memory.store import find_board_by_name, _conn
+    board = find_board_by_name(board_name)
+    if not board:
+        return f"I couldn't find a '{board_name}' board."
+
     with _conn() as con:
         if show_done:
             rows = con.execute(
-                "SELECT id, task, priority, done FROM todos ORDER BY done, priority DESC, created_at"
+                "SELECT task, priority, done, due_time FROM todos WHERE board_id = ? "
+                "ORDER BY done, priority DESC, created_at",
+                (board["id"],)
             ).fetchall()
         else:
             rows = con.execute(
-                "SELECT id, task, priority, done FROM todos WHERE done = 0 "
-                "ORDER BY priority DESC, created_at"
+                "SELECT task, priority, done, due_time FROM todos WHERE board_id = ? AND done = 0 "
+                "ORDER BY priority DESC, created_at",
+                (board["id"],)
             ).fetchall()
 
     if not rows:
-        return "Your to-do list is empty." if not show_done else "No tasks found."
+        return f"No tasks on {board['title']}." if not show_done else f"No tasks found on {board['title']}."
 
-    lines = ["Your tasks:"]
+    lines = [f"Tasks on {board['title']}:"]
     for i, row in enumerate(rows, 1):
         status = "✓" if row["done"] else "○"
         priority_tag = f" [{row['priority']}]" if row["priority"] != "normal" else ""
-        lines.append(f"  {i}. {status} {row['task']}{priority_tag}")
+        time_tag = f" ({row['due_time']})" if row["due_time"] else ""
+        lines.append(f"  {i}. {status} {row['task']}{time_tag}{priority_tag}")
     return "\n".join(lines)
 
 
-def complete_todo(task_ref: str) -> str:
-    with _conn() as con:
-        # try by position number
-        if task_ref.isdigit():
-            rows = con.execute(
-                "SELECT id, task FROM todos WHERE done = 0 ORDER BY created_at"
-            ).fetchall()
-            idx = int(task_ref) - 1
-            if 0 <= idx < len(rows):
-                todo_id = rows[idx]["id"]
-                task    = rows[idx]["task"]
-                con.execute("UPDATE todos SET done = 1 WHERE id = ?", (todo_id,))
-                return f"Marked as done: '{task}'."
-            return "That task number doesn't exist."
+def complete_todo_on_board(board_name: str, task_ref: str) -> str:
+    from app.memory.store import find_board_by_name, _conn
+    board = find_board_by_name(board_name)
+    if not board:
+        return f"I couldn't find a '{board_name}' board."
 
-        # try by name match
+    with _conn() as con:
         row = con.execute(
-            "SELECT id, task FROM todos WHERE task LIKE ? AND done = 0",
-            (f"%{task_ref}%",)
+            "SELECT id, task FROM todos WHERE board_id = ? AND task LIKE ? AND done = 0",
+            (board["id"], f"%{task_ref}%")
         ).fetchone()
         if row:
             con.execute("UPDATE todos SET done = 1 WHERE id = ?", (row["id"],))
-            return f"Marked as done: '{row['task']}'."
+            return f"Marked as done on {board['title']}: '{row['task']}'."
 
-    return "I couldn't find that task."
+    return f"I couldn't find '{task_ref}' on {board['title']}."
 
 
-def delete_todo(task_ref: str) -> str:
+def delete_todo_on_board(board_name: str, task_ref: str) -> str:
+    from app.memory.store import find_board_by_name, _conn
+    board = find_board_by_name(board_name)
+    if not board:
+        return f"I couldn't find a '{board_name}' board."
+
     with _conn() as con:
-        if task_ref.isdigit():
-            rows = con.execute(
-                "SELECT id, task FROM todos WHERE done = 0 ORDER BY created_at"
-            ).fetchall()
-            idx = int(task_ref) - 1
-            if 0 <= idx < len(rows):
-                todo_id = rows[idx]["id"]
-                task    = rows[idx]["task"]
-                con.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
-                return f"Removed: '{task}'."
-            return "That task number doesn't exist."
-
         row = con.execute(
-            "SELECT id, task FROM todos WHERE task LIKE ?",
-            (f"%{task_ref}%",)
+            "SELECT id, task FROM todos WHERE board_id = ? AND task LIKE ?",
+            (board["id"], f"%{task_ref}%")
         ).fetchone()
         if row:
             con.execute("DELETE FROM todos WHERE id = ?", (row["id"],))
-            return f"Removed: '{row['task']}'."
+            return f"Removed from {board['title']}: '{row['task']}'."
 
-    return "I couldn't find that task."
-
+    return f"I couldn't find '{task_ref}' on {board['title']}."
 
 # ── reminders ─────────────────────────────────────────────────
 

@@ -53,13 +53,13 @@ External data:
 {"action": "external_standings", "league": "league name"}
 
 Actions:
-{"action": "action_add_todo", "task": "task description"}
-{"action": "action_list_todos"}
-{"action": "action_complete_todo", "ref": "task name or number"}
-{"action": "action_delete_todo", "ref": "task name or number"}
-{"action": "action_add_reminder", "message": "reminder text", "time": "HH:MM", "date": "today|tomorrow|DD/MM/YYYY"}
-{"action": "action_delete_reminder", "message": "reminder message to delete"}
-{"action": "action_list_reminders"}
+{"action": "action_add_board", "title": "board title"}
+{"action": "action_list_boards"}
+{"action": "action_delete_board", "title": "board title"}
+{"action": "action_add_todo", "board": "board name", "task": "task description", "time": "HH:MM in 24h format, omit field entirely if no time mentioned"}
+{"action": "action_list_todos", "board": "board name"}
+{"action": "action_complete_todo", "board": "board name", "ref": "task name"}
+{"action": "action_delete_todo", "board": "board name", "ref": "task name"}
 {"action": "action_set_timer", "duration": "10 minutes", "label": "optional label"}
 {"action": "action_set_alarm", "time": "07:30"}
 {"action": "action_add_event", "title": "descriptive event title extracted from input", "event_type": "exam|appointment|anniversary|birthday|meeting|deadline|alarm|other", "date": "DD/MM/YYYY or today or tomorrow", "time": "HH:MM in 24h format, default 09:00 if not specified", "notes": "optional"}
@@ -88,16 +88,22 @@ Math expression rules:
 - If the expression contains log, assume natural log (ln) unless the user specifies otherwise
 - If the expression is ambiguous or unparseable, return {"action": "unknown"}
 
+Task/board rules:
+- Tasks always belong to a board. Extract the board name from phrases like "on my X board", "for X", "to the X tasks/list", "in X".
+- If the user wants to add a task but gives no board at all, return {"action": "unknown"} — do not guess a board.
+- For action_add_todo: only include the "time" field if the user actually mentioned a time. Never invent or default a time.
+- For action_complete_todo / action_delete_todo: "ref" should be the task text as closely as the user said it, not the board name.
+
 General rules:
 - Always return valid JSON only. No explanation, no markdown, no extra text.
 - If the user greets in Portuguese (e.g. "olá", "bom dia"), respond with {"action": "greeting"}
 - If the user says "obrigado" or "obrigada", respond with {"action": "social"}
-- For reminders and alarms: if a time is given but no date, default date to "today"
+- For alarms: if a time is given but no date, default date to "today"
 - For events (exam, meeting, etc.): if no date is given, return {"action": "unknown"}
 - For ambiguous inputs that could be memory or action, prefer action
 - For weather: if the user says "forecast", "next N days", or "this week", set days=5. Otherwise set days=1.
 - For events, extract a meaningful title from the input. Never use just the event type as the title.
-- If no date is given for an event or reminder, return {"action": "unknown"} — do not guess.
+- If no date is given for an event return {"action": "unknown"} — do not guess.
 """
 
 # ── fast-path: social/greeting inputs that never need the LLM ──

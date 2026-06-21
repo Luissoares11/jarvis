@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from datetime import datetime
@@ -114,27 +115,59 @@ def get_timers(token: str = Depends(verify_token)):
             })
     return {"timers": result}
 
-@app.get("/tasks")
-def get_tasks(token: str = Depends(verify_token)):
-    from app.memory.store import _conn
-    with _conn() as con:
-        rows = con.execute(
-            "SELECT id, task, priority, done, created_at FROM todos WHERE done = 0 "
-            "ORDER BY priority DESC, created_at"
-        ).fetchall()
-    return {"tasks": [dict(r) for r in rows]}
+class BoardCreate(BaseModel):
+    title: str
+
+class TodoCreate(BaseModel):
+    board_id: str
+    task: str
+    priority: str = "normal"
+    due_time: Optional[str] = None
 
 
-@app.get("/reminders")
-def get_reminders(token: str = Depends(verify_token)):
-    from app.memory.store import _conn
-    with _conn() as con:
-        rows = con.execute(
-            "SELECT id, message, remind_at FROM reminders WHERE fired = 0 "
-            "ORDER BY remind_at"
-        ).fetchall()
-    return {"reminders": [dict(r) for r in rows]}
+@app.get("/boards")
+def get_boards(token: str = Depends(verify_token)):
+    from app.memory.store import list_boards
+    return {"boards": list_boards()}
 
+
+@app.post("/boards")
+def create_board(body: BoardCreate, token: str = Depends(verify_token)):
+    from app.memory.store import add_board
+    return add_board(body.title.strip())
+
+
+@app.delete("/boards/{board_id}")
+def remove_board(board_id: str, token: str = Depends(verify_token)):
+    from app.memory.store import delete_board
+    delete_board(board_id)
+    return {"ok": True}
+
+
+@app.get("/boards/{board_id}/tasks")
+def get_board_tasks(board_id: str, token: str = Depends(verify_token)):
+    from app.memory.store import list_todos_by_board
+    return {"tasks": list_todos_by_board(board_id)}
+
+
+@app.post("/tasks")
+def create_task(body: TodoCreate, token: str = Depends(verify_token)):
+    from app.memory.store import add_todo_to_board
+    return add_todo_to_board(body.board_id, body.task.strip(), body.priority, body.due_time)
+
+
+@app.patch("/tasks/{task_id}")
+def update_task(task_id: str, done: bool, token: str = Depends(verify_token)):
+    from app.memory.store import set_todo_done
+    set_todo_done(task_id, done)
+    return {"ok": True}
+
+
+@app.delete("/tasks/{task_id}")
+def remove_task(task_id: str, token: str = Depends(verify_token)):
+    from app.memory.store import delete_todo_by_id
+    delete_todo_by_id(task_id)
+    return {"ok": True}
 
 @app.get("/events")
 def get_events(token: str = Depends(verify_token)):

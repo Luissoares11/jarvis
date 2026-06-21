@@ -98,14 +98,14 @@ def init_db():
                 task       TEXT NOT NULL,
                 priority   TEXT DEFAULT 'normal',
                 done       INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT (datetime('now'))
+                created_at TEXT DEFAULT (datetime('now')),
+                board_id   TEXT REFERENCES boards(id),
+                due_time   TEXT
             );
 
-            CREATE TABLE IF NOT EXISTS reminders (
+            CREATE TABLE IF NOT EXISTS boards (
                 id         TEXT PRIMARY KEY,
-                message    TEXT NOT NULL,
-                remind_at  TEXT NOT NULL,
-                fired      INTEGER DEFAULT 0,
+                title      TEXT NOT NULL,
                 created_at TEXT DEFAULT (datetime('now'))
             );
                           
@@ -327,3 +327,11 @@ def db_save_computation(input_str: str, result_str: str):
             "INSERT INTO computations (id, input, result) VALUES (?, ?, ?)",
             (str(uuid.uuid4()), input_str, result_str)
         )
+
+def _ensure_todo_columns():
+    with _conn() as con:
+        cols = [r["name"] for r in con.execute("PRAGMA table_info(todos)").fetchall()]
+        if "board_id" not in cols:
+            con.execute("ALTER TABLE todos ADD COLUMN board_id TEXT REFERENCES boards(id)")
+        if "due_time" not in cols:
+            con.execute("ALTER TABLE todos ADD COLUMN due_time TEXT")

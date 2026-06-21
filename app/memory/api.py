@@ -4,7 +4,7 @@ from app.utils import clean_text, clean_value
 from .store import (
     db_find_facts, db_add_fact, db_delete_facts,
     db_get_collection, db_set_collection, db_list_collections,
-    db_get_aliases, db_set_alias,
+    db_get_aliases, db_set_alias, 
 )
 from .resolver import resolve_entity
 from .context import context
