@@ -42,8 +42,7 @@ from .compute import (
 )
 from .external import get_weather, get_fixtures, get_results, get_standings
 from .actions import (
-    add_todo, list_todos, complete_todo, delete_todo,
-    add_reminder, list_reminders, load_pending_reminders,
+    add_todo_to_board_by_name, list_todos_by_board_name, complete_todo_on_board, delete_todo_on_board,
     set_timer, set_alarm,
     add_event, delete_event, edit_event, list_events,
 )
@@ -523,45 +522,49 @@ def _handle_external_standings(a, ctx):
     return get_standings(a["league"])
 
 
-def _handle_action_add_todo(a, ctx):
-    return add_todo(a["task"])
+def _handle_action_add_board(a, ctx):
+    from app.memory.store import add_board
+    board = add_board(a["title"].strip())
+    return f"Created board: '{board['title']}'."
 
+
+def _handle_action_list_boards(a, ctx):
+    from app.memory.store import list_boards
+    boards = list_boards()
+    if not boards:
+        return "You don't have any boards yet."
+    lines = ["Your boards:"]
+    for b in boards:
+        lines.append(f"  • {b['title']}")
+    return "\n".join(lines)
+
+
+def _handle_action_delete_board(a, ctx):
+    from app.memory.store import find_board_by_name, delete_board
+    board = find_board_by_name(a["title"])
+    if not board:
+        return f"I couldn't find a '{a['title']}' board."
+    delete_board(board["id"])
+    return f"Deleted board '{board['title']}' and all its tasks."
+
+def _handle_action_add_todo(a, ctx):
+    return add_todo_to_board_by_name(
+        a["board"], a["task"], due_time=a.get("time")
+    )
 
 def _handle_action_list_todos(a, ctx):
-    return list_todos()
+    return list_todos_by_board_name(a["board"])
 
 
 def _handle_action_complete_todo(a, ctx):
-    return complete_todo(a["ref"])
+    return complete_todo_on_board(a["board"], a["ref"])
 
 
 def _handle_action_delete_todo(a, ctx):
-    return delete_todo(a["ref"])
-
-
-def _handle_action_add_reminder(a, ctx):
-    return add_reminder(a["message"], a["time"], a.get("date", "today"))
-
-
-def _handle_action_list_reminders(a, ctx):
-    return list_reminders()
-
-def _handle_action_delete_reminder(a, ctx):
-    from .memory.store import _conn
-    message = a.get("message", "")
-    with _conn() as con:
-        row = con.execute(
-            "SELECT id, message FROM reminders WHERE message LIKE ? AND fired = 0",
-            (f"%{message}%",)
-        ).fetchone()
-        if row:
-            con.execute("DELETE FROM reminders WHERE id = ?", (row["id"],))
-            return f"{say('confirm')} Removed reminder '{row['message']}'."
-    return "I couldn't find that reminder."
+    return delete_todo_on_board(a["board"], a["ref"])
 
 def _handle_action_set_timer(a, ctx):
     return set_timer(a["duration"], a.get("label", "Timer"))
-
 
 def _handle_action_set_alarm(a, ctx):
     return set_alarm(a["time"])
@@ -658,13 +661,13 @@ _HANDLERS = {
     "external_fixtures":                        _handle_external_fixtures,
     "external_results":                         _handle_external_results,
     "external_standings":                       _handle_external_standings,
+    "action_add_board":                         _handle_action_add_board,
+    "action_list_boards":                       _handle_action_list_boards,
+    "action_delete_board":                      _handle_action_delete_board,
     "action_add_todo":                          _handle_action_add_todo,
     "action_list_todos":                        _handle_action_list_todos,
     "action_complete_todo":                     _handle_action_complete_todo,
     "action_delete_todo":                       _handle_action_delete_todo,
-    "action_add_reminder":                      _handle_action_add_reminder,
-    "action_delete_reminder":                   _handle_action_delete_reminder,
-    "action_list_reminders":                    _handle_action_list_reminders,
     "action_set_timer":                         _handle_action_set_timer,
     "action_set_alarm":                         _handle_action_set_alarm,
     "action_add_event":                         _handle_action_add_event,
