@@ -13,6 +13,7 @@ load_dotenv()
 
 from app.core import process_input
 from app.memory.store import init_db
+from app.memory.store import _ensure_todo_columns
 from app.memory.context import make_context
 
 JARVIS_TOKEN = os.getenv("JARVIS_API_TOKEN", "changeme")
@@ -47,6 +48,7 @@ class ChatResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    _ensure_todo_columns()
     yield
 
 
