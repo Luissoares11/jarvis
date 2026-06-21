@@ -328,10 +328,74 @@ def db_save_computation(input_str: str, result_str: str):
             (str(uuid.uuid4()), input_str, result_str)
         )
 
-def _ensure_todo_columns():
+# ── boards ────────────────────────────────────────────────────
+
+def add_board(title: str) -> dict:
+    board_id = str(uuid.uuid4())
     with _conn() as con:
-        cols = [r["name"] for r in con.execute("PRAGMA table_info(todos)").fetchall()]
-        if "board_id" not in cols:
-            con.execute("ALTER TABLE todos ADD COLUMN board_id TEXT REFERENCES boards(id)")
-        if "due_time" not in cols:
-            con.execute("ALTER TABLE todos ADD COLUMN due_time TEXT")
+        con.execute(
+            "INSERT INTO boards (id, title, created_at) VALUES (?, ?, datetime('now'))",
+            (board_id, title)
+        )
+    return {"id": board_id, "title": title}
+
+
+def list_boards() -> list[dict]:
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT id, title, created_at FROM boards ORDER BY created_at"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def find_board_by_name(name: str) -> dict | None:
+    with _conn() as con:
+        row = con.execute(
+            "SELECT id, title FROM boards WHERE title = ? COLLATE NOCASE", (name,)
+        ).fetchone()
+        if row:
+            return dict(row)
+        row = con.execute(
+            "SELECT id, title FROM boards WHERE title LIKE ?", (f"%{name}%",)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def delete_board(board_id: str) -> None:
+    with _conn() as con:
+        con.execute("DELETE FROM todos WHERE board_id = ?", (board_id,))
+        con.execute("DELETE FROM boards WHERE id = ?", (board_id,))
+
+
+# ── todos (boards-aware) ──────────────────────────────────────
+
+def add_todo_to_board(board_id: str, task: str, priority: str = "normal", due_time: str | None = None) -> dict:
+    todo_id = str(uuid.uuid4())
+    with _conn() as con:
+        con.execute(
+            "INSERT INTO todos (id, task, priority, done, created_at, board_id, due_time) "
+            "VALUES (?, ?, ?, 0, datetime('now'), ?, ?)",
+            (todo_id, task, priority, board_id, due_time)
+        )
+    return {"id": todo_id, "task": task, "priority": priority, "done": False, "board_id": board_id, "due_time": due_time}
+
+
+def list_todos_by_board(board_id: str) -> list[dict]:
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT id, task, priority, done, created_at, due_time FROM todos "
+            "WHERE board_id = ? AND done = 0 "
+            "ORDER BY (due_time IS NULL), due_time, priority DESC, created_at",
+            (board_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def set_todo_done(todo_id: str, done: bool) -> None:
+    with _conn() as con:
+        con.execute("UPDATE todos SET done = ? WHERE id = ?", (1 if done else 0, todo_id))
+
+
+def delete_todo_by_id(todo_id: str) -> None:
+    with _conn() as con:
+        con.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
