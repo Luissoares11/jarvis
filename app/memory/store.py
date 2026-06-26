@@ -69,6 +69,7 @@ def init_db():
                 start_time  TEXT,
                 end_time    TEXT,
                 notes       TEXT,
+                recurrence  TEXT DEFAULT NULL,
                 created_at  TEXT DEFAULT (datetime('now'))
             );
 

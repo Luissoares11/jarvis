@@ -174,27 +174,9 @@ def remove_task(task_id: str, token: str = Depends(verify_token)):
 @app.get("/events")
 def get_events(token: str = Depends(verify_token)):
     from app.memory.store import _conn
-    from datetime import datetime, timedelta
-    from zoneinfo import ZoneInfo
-    now = datetime.now(ZoneInfo("Europe/Lisbon"))
-    until = now + timedelta(days=60)
     with _conn() as con:
         rows = con.execute(
-            "SELECT id, title, type, start_time, end_time, notes FROM events "
-            "ORDER BY start_time"
+            "SELECT id, title, type, start_time, end_time, notes, recurrence "
+            "FROM events ORDER BY start_time"
         ).fetchall()
-    events = []
-    for r in rows:
-        dt = datetime.fromisoformat(r["start_time"])
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=ZoneInfo("Europe/Lisbon"))
-        if now <= dt <= until:
-            events.append({
-                "id": r["id"],
-                "title": r["title"],
-                "type": r["type"],
-                "start_time": r["start_time"],
-                "end_time": r["end_time"],
-                "notes": r["notes"],
-            })
-    return {"events": events}
+    return {"events": [dict(r) for r in rows]}
