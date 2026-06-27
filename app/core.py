@@ -1,3 +1,5 @@
+import re
+
 from .commands import run_command
 from .logger import log_event
 from .memory import (
@@ -35,17 +37,19 @@ from .relations import (
     REL_OCCUPATION, REL_LOCATION, REL_NATIONALITY, REL_NICKNAME,
     relation_display,
 )
-from .utils import clean_text, title_name
+from .utils import clean_text, title_name, fuzzy_collection_name
 from .compute import (
     calculate, differentiate, integrate,
-    limit, solve_equation, convert_units, plot_function, plot_implicit
+    limit, solve_equation, convert_units, plot_function, plot_implicit,
 )
-from .external import get_weather, get_fixtures, get_results, get_standings
-from .actions import (
-    add_todo_to_board_by_name, list_todos_by_board_name, complete_todo_on_board, delete_todo_on_board,
-    set_timer, set_alarm,
+from .actions import set_timer, set_alarm, add_reminder, list_reminders, _timer_threads
+from .features import (
+    get_weather,
+    get_fixtures, get_results, get_standings,
+    add_task_to_board, list_tasks_on_board, complete_task_on_board, delete_task_on_board,
     add_event, delete_event, edit_event, list_events,
 )
+from .memory.store import add_board, list_boards, find_board_by_name, delete_board
 
 
 # ── formatters ────────────────────────────────────────────────
@@ -185,7 +189,7 @@ def _position_to_index(position: str, length: int):
     return mapping.get(position)
 
 
-# ── handlers (all accept ctx explicitly) ─────────────────────
+# ── handlers ──────────────────────────────────────────────────
 
 def _handle_empty(a, ctx):
     return say("empty")
@@ -386,12 +390,11 @@ def _handle_set_collection(a, ctx):
 
 
 def _handle_query_collection(a, ctx):
-    from .utils import fuzzy_collection_name
     owner = a["owner"]
     name  = a["name"]
 
-    known  = [c["name"] for c in list_collections(owner=owner)]
-    name   = fuzzy_collection_name(name, known)
+    known = [c["name"] for c in list_collections(owner=owner)]
+    name  = fuzzy_collection_name(name, known)
 
     collection = get_collection(owner, name)
     if not collection:
@@ -523,13 +526,11 @@ def _handle_external_standings(a, ctx):
 
 
 def _handle_action_add_board(a, ctx):
-    from app.memory.store import add_board
     board = add_board(a["title"].strip())
     return f"Created board: '{board['title']}'."
 
 
 def _handle_action_list_boards(a, ctx):
-    from app.memory.store import list_boards
     boards = list_boards()
     if not boards:
         return "You don't have any boards yet."
@@ -540,31 +541,32 @@ def _handle_action_list_boards(a, ctx):
 
 
 def _handle_action_delete_board(a, ctx):
-    from app.memory.store import find_board_by_name, delete_board
     board = find_board_by_name(a["title"])
     if not board:
         return f"I couldn't find a '{a['title']}' board."
     delete_board(board["id"])
     return f"Deleted board '{board['title']}' and all its tasks."
 
-def _handle_action_add_todo(a, ctx):
-    return add_todo_to_board_by_name(
-        a["board"], a["task"], due_time=a.get("time")
-    )
 
-def _handle_action_list_todos(a, ctx):
-    return list_todos_by_board_name(a["board"])
+def _handle_action_add_task(a, ctx):
+    return add_task_to_board(a["board"], a["task"], due_time=a.get("time"))
 
 
-def _handle_action_complete_todo(a, ctx):
-    return complete_todo_on_board(a["board"], a["ref"])
+def _handle_action_list_tasks(a, ctx):
+    return list_tasks_on_board(a["board"])
 
 
-def _handle_action_delete_todo(a, ctx):
-    return delete_todo_on_board(a["board"], a["ref"])
+def _handle_action_complete_task(a, ctx):
+    return complete_task_on_board(a["board"], a["ref"])
+
+
+def _handle_action_delete_task(a, ctx):
+    return delete_task_on_board(a["board"], a["ref"])
+
 
 def _handle_action_set_timer(a, ctx):
     return set_timer(a["duration"], a.get("label", "Timer"))
+
 
 def _handle_action_set_alarm(a, ctx):
     return set_alarm(a["time"])
@@ -578,6 +580,7 @@ def _handle_action_add_event(a, ctx):
         event_type=a.get("event_type", "other"),
         notes=a.get("notes", ""),
     )
+
 
 def _handle_action_delete_event(a, ctx):
     return delete_event(a.get("title", ""))
@@ -593,25 +596,13 @@ def _handle_action_edit_event(a, ctx):
         new_type=a.get("new_type"),
     )
 
+
 def _handle_action_list_events(a, ctx):
     return list_events(
         days_ahead=a.get("days", 30),
         include_past=a.get("include_past", False),
-        all_events=a.get("all_events", False)
+        all_events=a.get("all_events", False),
     )
-
-def _handle_action_delete_event(a, ctx):
-    from .memory.store import _conn
-    title = a.get("title", "")
-    with _conn() as con:
-        row = con.execute(
-            "SELECT id, title FROM events WHERE title LIKE ?",
-            (f"%{title}%",)
-        ).fetchone()
-        if row:
-            con.execute("DELETE FROM events WHERE id = ?", (row["id"],))
-            return f"{say('confirm')} Removed event '{row['title']}'."
-    return "I couldn't find that event."
 
 
 def _handle_unknown(a, ctx):
@@ -664,10 +655,10 @@ _HANDLERS = {
     "action_add_board":                         _handle_action_add_board,
     "action_list_boards":                       _handle_action_list_boards,
     "action_delete_board":                      _handle_action_delete_board,
-    "action_add_todo":                          _handle_action_add_todo,
-    "action_list_todos":                        _handle_action_list_todos,
-    "action_complete_todo":                     _handle_action_complete_todo,
-    "action_delete_todo":                       _handle_action_delete_todo,
+    "action_add_task":                          _handle_action_add_task,
+    "action_list_tasks":                        _handle_action_list_tasks,
+    "action_complete_task":                     _handle_action_complete_task,
+    "action_delete_task":                       _handle_action_delete_task,
     "action_set_timer":                         _handle_action_set_timer,
     "action_set_alarm":                         _handle_action_set_alarm,
     "action_add_event":                         _handle_action_add_event,
@@ -690,10 +681,6 @@ def handle_action(action_data: dict, ctx: dict) -> str:
 # ── entry point ───────────────────────────────────────────────
 
 def process_input(user_input: str, ctx: dict = None) -> str:
-    """
-    Main entry point. ctx is the session context dict passed in from main.py.
-    No global state is touched — everything flows through ctx explicitly.
-    """
     if ctx is None:
         ctx = make_context()
 
@@ -702,7 +689,6 @@ def process_input(user_input: str, ctx: dict = None) -> str:
     if not raw:
         return handle_action({"action": "empty"}, ctx)
 
-    # check for debug commands before hitting the LLM
     _debug_commands = {
         "jarvis facts", "jarvis aliases", "jarvis context",
         "jarvis collections", "jarvis learned", "jarvis history",
@@ -710,12 +696,10 @@ def process_input(user_input: str, ctx: dict = None) -> str:
     if raw.lower() in _debug_commands:
         return handle_action({"action": "debug_command", "name": raw.lower()}, ctx)
 
-    import re
     m = re.match(r"^jarvis dump (.+)$", raw.lower())
     if m:
         return handle_action({"action": "debug_dump_subject", "subject": m.group(1).strip()}, ctx)
 
-    # check for pending conflict confirmation (yes/no overrides everything)
     if ctx.get("pending_conflict"):
         t = raw.lower().strip()
         if t in {"yes", "yeah", "yep", "correct", "confirm", "sure", "do it", "update it"}:
@@ -723,10 +707,8 @@ def process_input(user_input: str, ctx: dict = None) -> str:
         if t in {"no", "nope", "nah", "cancel", "keep it", "leave it"}:
             return handle_action({"action": "reject_conflict"}, ctx)
 
-    # interpret intent (cache → LLM)
     action_data = interpret(raw)
     action_data["raw"] = raw
-
 
     response = handle_action(action_data, ctx)
 
