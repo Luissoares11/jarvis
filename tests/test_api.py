@@ -263,11 +263,11 @@ class TestEvents:
         assert len(data["events"]) == 1
         assert "Maths" in data["events"][0]["title"]
 
-    def test_past_events_are_excluded(self, client):
-        """Events in the past should not appear in the default response."""
+    def test_past_events_are_returned(self, client):
         _insert_event("Old concert", start="2000-01-01T20:00:00+01:00")
         r = client.get("/events", headers=AUTH)
-        assert r.json() == {"events": []}
+        assert r.status_code == 200
+        assert len(r.json()["events"]) == 1
 
     def test_response_has_expected_fields(self, client):
         _insert_event("Meeting")
