@@ -2,11 +2,9 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 
 from server.auth import verify_token
-from app.actions import _timer_threads, _now
-from app.utils import _now
+from app.utils import _now, _timer_threads
 
 router = APIRouter()
-
 
 @router.get("/timers")
 def get_timers(token: str = Depends(verify_token)):
