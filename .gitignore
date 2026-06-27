@@ -1,7 +1,8 @@
 .env
 token.json
 credentials.json
-data/
+data/*.db
+data/cache/
 logs/
 __pycache__/
 *.pycdata/*.db
