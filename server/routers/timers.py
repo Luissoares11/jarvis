@@ -2,7 +2,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 
 from server.auth import verify_token
-from app.utils import _now, _timer_threads
+from app.actions import _timer_threads
+from app.utils import _now
 
 router = APIRouter()
 
