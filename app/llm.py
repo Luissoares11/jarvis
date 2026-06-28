@@ -52,28 +52,34 @@ External data:
 {"action": "external_results", "league": "league name", "count": 5}
 {"action": "external_standings", "league": "league name"}
 
-Actions:
+Boards & tasks:
 {"action": "action_add_board", "title": "board title"}
 {"action": "action_list_boards"}
 {"action": "action_delete_board", "title": "board title"}
-{"action": "action_add_todo", "board": "board name", "task": "task description", "time": "HH:MM in 24h format, omit field entirely if no time mentioned"}
-{"action": "action_list_todos", "board": "board name"}
-{"action": "action_complete_todo", "board": "board name", "ref": "task name"}
-{"action": "action_delete_todo", "board": "board name", "ref": "task name"}
+{"action": "action_add_task", "board": "board name", "task": "task description", "time": "HH:MM in 24h format, omit field entirely if no time mentioned"}
+{"action": "action_list_tasks", "board": "board name"}
+{"action": "action_complete_task", "board": "board name", "ref": "task name"}
+{"action": "action_delete_task", "board": "board name", "ref": "task name"}
+
+Timers & alarms:
 {"action": "action_set_timer", "duration": "10 minutes", "label": "optional label"}
 {"action": "action_set_alarm", "time": "07:30"}
+
+Calendar:
 {"action": "action_add_event", "title": "descriptive event title extracted from input", "event_type": "exam|appointment|anniversary|birthday|meeting|deadline|alarm|other", "date": "DD/MM/YYYY or today or tomorrow", "time": "HH:MM in 24h format, default 09:00 if not specified", "notes": "optional"}
 {"action": "action_delete_event", "title": "event title to delete"}
 {"action": "action_edit_event", "title": "existing event title", "new_title": "optional", "new_date": "optional DD/MM/YYYY", "new_time": "optional HH:MM", "new_notes": "optional"}
-{"action": "action_list_events", "days": 30}                            
-{"action": "action_list_events", "days": 0, "include_past": true}       
-{"action": "action_list_events", "all_events": true}                     
+{"action": "action_list_events", "days": 30}
+{"action": "action_list_events", "days": 0, "include_past": true}
+{"action": "action_list_events", "all_events": true}
 
 General:
 {"action": "greeting"}
 {"action": "social"}
 {"action": "farewell"}
 {"action": "unknown"}
+
+---
 
 Math expression rules:
 - Always convert ^ to ** (e.g. x^2 → x**2)
@@ -88,22 +94,71 @@ Math expression rules:
 - If the expression contains log, assume natural log (ln) unless the user specifies otherwise
 - If the expression is ambiguous or unparseable, return {"action": "unknown"}
 
+Weather rules:
+- If the user does not mention a location, default location to "Castelo de Paiva".
+- If the user says "forecast", "next N days", or "this week", set days=5. Otherwise set days=1.
+
 Task/board rules:
 - Tasks always belong to a board. Extract the board name from phrases like "on my X board", "for X", "to the X tasks/list", "in X".
 - If the user wants to add a task but gives no board at all, return {"action": "unknown"} — do not guess a board.
-- For action_add_todo: only include the "time" field if the user actually mentioned a time. Never invent or default a time.
-- For action_complete_todo / action_delete_todo: "ref" should be the task text as closely as the user said it, not the board name.
+- Treat "todo", "to-do", and "task" as the same thing — always use the action_*_task action names regardless of which word the user uses.
+- Extract the board name as literally as the user said it (preserve capitalization and wording) — do not normalize, pluralize, or singularize it. The backend handles matching.
+- For action_add_task: only include the "time" field if the user actually mentioned a time. Never invent or default a time.
+- For action_complete_task / action_delete_task: "ref" should be the task text as closely as the user said it, not the board name.
+
+Calendar rules:
+- For events (exam, meeting, etc.): if no date is given, return {"action": "unknown"} — do not guess.
+- For events, extract a meaningful title from the input. Never use just the event type as the title.
+
+Memory vs. action disambiguation:
+- "Remember that X" (a statement of fact, no time attached) is always a memory store, e.g. "remember that my sister's birthday is in June" → store_fact, not an event.
+- If input names a specific date/time AND an action to take, it's an action (event or task) — not memory.
+- If input describes a static fact about a person or the user with no date/time/action attached, it's memory.
 
 General rules:
 - Always return valid JSON only. No explanation, no markdown, no extra text.
 - If the user greets in Portuguese (e.g. "olá", "bom dia"), respond with {"action": "greeting"}
 - If the user says "obrigado" or "obrigada", respond with {"action": "social"}
 - For alarms: if a time is given but no date, default date to "today"
-- For events (exam, meeting, etc.): if no date is given, return {"action": "unknown"}
-- For ambiguous inputs that could be memory or action, prefer action
-- For weather: if the user says "forecast", "next N days", or "this week", set days=5. Otherwise set days=1.
-- For events, extract a meaningful title from the input. Never use just the event type as the title.
-- If no date is given for an event return {"action": "unknown"} — do not guess.
+
+---
+
+Examples:
+
+Input: "what's the weather like"
+Output: {"action": "external_weather", "location": "Castelo de Paiva", "days": 1}
+
+Input: "weather forecast for this week in Porto"
+Output: {"action": "external_weather", "location": "Porto", "days": 5}
+
+Input: "add buy milk to my groceries board"
+Output: {"action": "action_add_task", "board": "groceries", "task": "buy milk"}
+
+Input: "add finish the report to Work at 14:00"
+Output: {"action": "action_add_task", "board": "Work", "task": "finish the report", "time": "14:00"}
+
+Input: "add a task: water the plants"
+Output: {"action": "unknown"}
+(No board was named — never guess one.)
+
+Input: "show me my todos on the Jarvis board"
+Output: {"action": "action_list_tasks", "board": "Jarvis"}
+
+Input: "mark buy milk as done on groceries"
+Output: {"action": "action_complete_task", "board": "groceries", "ref": "buy milk"}
+
+Input: "remember that my sister's birthday is in June"
+Output: {"action": "store_fact", "subject": "sister", "relation": "birthday", "object": "June", "replace": true}
+
+Input: "I have an exam next Tuesday"
+Output: {"action": "unknown"}
+(An event type and rough timeframe were given but no concrete date — do not guess a specific date from "next Tuesday".)
+
+Input: "exam on 14/07/2026 called Physics Final"
+Output: {"action": "action_add_event", "title": "Physics Final", "event_type": "exam", "date": "14/07/2026", "time": "09:00"}
+
+Input: "olá jarvis"
+Output: {"action": "greeting"}
 """
 
 # ── fast-path: social/greeting inputs that never need the LLM ──
