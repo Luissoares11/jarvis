@@ -6,6 +6,15 @@ from datetime import timedelta
 from app.memory.store import _conn
 from app.utils import _now, _parse_datetime
 
+# ── notifications helper ─────────────────────────────────────
+
+def _push_notification(message: str):
+    with _conn() as con:
+        con.execute(
+            "INSERT INTO notifications (id, message, read, created_at) "
+            "VALUES (?, ?, 0, datetime('now'))",
+            (str(uuid.uuid4()), message)
+        )
 
 # ── reminders ─────────────────────────────────────────────────
 
@@ -17,6 +26,7 @@ def _fire_reminder(reminder_id: str, message: str):
     with _conn() as con:
         con.execute("UPDATE reminders SET fired = 1 WHERE id = ?", (reminder_id,))
     _reminder_threads.pop(reminder_id, None)
+    _push_notification(f"⏰ Reminder: {message}")
 
 
 def add_reminder(message: str, when_str: str, date_str: str = "today") -> str:
@@ -100,6 +110,8 @@ _timer_threads: dict[str, dict] = {}
 def _fire_timer(timer_id: str, label: str):
     print(f"\n⏱️  Jarvis Timer: {label} — time's up!\n")
     _timer_threads.pop(timer_id, None)
+    _push_notification(f"⏱️ Timer done: {label}")
+    
 
 
 def set_timer(duration_str: str, label: str = "Timer") -> str:

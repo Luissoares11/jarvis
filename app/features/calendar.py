@@ -5,6 +5,8 @@ from zoneinfo import ZoneInfo
 from app.memory.store import _conn
 from app.utils import _now, _parse_datetime, TIMEZONE
 
+from app.memory.store import add_event_reminder, list_event_reminders, delete_event_reminder
+
 
 # ── event types ───────────────────────────────────────────────
 
@@ -29,18 +31,20 @@ def add_event(
     time_str: str = "09:00",
     event_type: str = "other",
     notes: str = "",
+    reminder_offsets: list[int] | None = None,
 ) -> str:
     try:
         dt = _parse_datetime(date_str, time_str)
         dt_end = dt + timedelta(hours=1)
         type_label = EVENT_TYPES.get(event_type.lower(), "📅 Event")
+        event_id = str(uuid.uuid4())
 
         with _conn() as con:
             con.execute(
                 "INSERT INTO events (id, title, type, start_time, end_time, notes, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
                 (
-                    str(uuid.uuid4()),
+                    event_id,
                     title,
                     event_type.lower(),
                     dt.isoformat(),
@@ -48,6 +52,10 @@ def add_event(
                     notes,
                 )
             )
+
+        if reminder_offsets:
+            for offset in reminder_offsets:
+                add_event_reminder(event_id, offset)
 
         return f"Added {type_label} '{title}' on {dt.strftime('%d %b at %H:%M')}."
     except ValueError as e:

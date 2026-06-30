@@ -7,8 +7,9 @@ Run from the repo root:  pytest tests/ -v
 import sys
 import os
 import pytest
+import tempfile
 
-os.environ["MEMORY_FILE"] = "/tmp/jarvis_test_db"
+os.environ["MEMORY_FILE"] = os.path.join(tempfile.gettempdir(), "jarvis_test_db.sqlite")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
