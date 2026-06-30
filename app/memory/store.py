@@ -72,6 +72,14 @@ def init_db():
                 recurrence  TEXT DEFAULT NULL,
                 created_at  TEXT DEFAULT (datetime('now'))
             );
+            
+            CREATE TABLE IF NOT EXISTS event_reminders (
+                id             TEXT PRIMARY KEY,
+                event_id       TEXT NOT NULL,
+                offset_minutes INTEGER NOT NULL,
+                created_at     TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+            );
 
             CREATE TABLE IF NOT EXISTS computations (
                 id         TEXT PRIMARY KEY,
@@ -407,3 +415,33 @@ def set_todo_done(todo_id: str, done: bool) -> None:
 def delete_todo_by_id(todo_id: str) -> None:
     with _conn() as con:
         con.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
+
+#-------------------- events reminders --------------------
+
+def add_event_reminder(event_id: str, offset_minutes: int) -> dict:
+    if not (0 < offset_minutes <= 525600):
+        raise ValueError("offset_minutes must be between 1 and 525600 (1 year).")
+
+    reminder_id = str(uuid.uuid4())
+    with _conn() as con:
+        con.execute(
+            "INSERT INTO event_reminders (id, event_id, offset_minutes, created_at) "
+            "VALUES (?, ?, ?, datetime('now'))",
+            (reminder_id, event_id, offset_minutes)
+        )
+    return {"id": reminder_id, "event_id": event_id, "offset_minutes": offset_minutes}
+
+
+def list_event_reminders(event_id: str) -> list[dict]:
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT id, event_id, offset_minutes, created_at FROM event_reminders WHERE event_id = ?",
+            (event_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def delete_event_reminder(reminder_id: str) -> bool:
+    with _conn() as con:
+        cur = con.execute("DELETE FROM event_reminders WHERE id = ?", (reminder_id,))
+        return cur.rowcount > 0

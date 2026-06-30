@@ -4,17 +4,25 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+import asyncio
+
+from app.actions.event_reminders import check_event_reminders
 
 load_dotenv()
 
 from app.memory.store import init_db, _ensure_todo_columns
 from server.routers import chat, weather, tasks, calendar, timers, notifications
 
+async def _reminder_loop():
+    while True:
+        check_event_reminders()
+        await asyncio.sleep(120)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     _ensure_todo_columns()
+    asyncio.create_task(_reminder_loop())
     yield
 
 
