@@ -6,15 +6,7 @@ from datetime import timedelta
 from app.memory.store import _conn
 from app.utils import _now, _parse_datetime
 
-# ── notifications helper ─────────────────────────────────────
-
-def _push_notification(message: str):
-    with _conn() as con:
-        con.execute(
-            "INSERT INTO notifications (id, message, read, created_at) "
-            "VALUES (?, ?, 0, datetime('now'))",
-            (str(uuid.uuid4()), message)
-        )
+from app.actions.notifications import _push_notification
 
 # ── reminders ─────────────────────────────────────────────────
 

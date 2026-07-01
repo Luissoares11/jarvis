@@ -7,4 +7,4 @@ from .timers import (
     _timer_threads,
 )
 
-from .event_reminders import check_event_reminders
+from .notifications import check_event_reminders

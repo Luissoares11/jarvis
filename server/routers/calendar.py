@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from server.auth import verify_token
-from app.memory.store import _conn, add_event_reminder, list_event_reminders, delete_event_reminder
+from app.memory.store import _conn
+from app.features.calendar import add_event_reminder, list_event_reminders, delete_event_reminder
 
 router = APIRouter()
 

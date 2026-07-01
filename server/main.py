@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import asyncio
 
-from app.actions.event_reminders import check_event_reminders
+from app.actions.notifications import check_event_reminders
 
 load_dotenv()
 

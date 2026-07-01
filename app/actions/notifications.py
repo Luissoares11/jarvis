@@ -1,10 +1,19 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+import uuid
 
 from app.memory.store import _conn
 from app.utils import _now, TIMEZONE
-from app.actions.timers import _push_notification
 
+# ── notifications helper ─────────────────────────────────────
+
+def _push_notification(message: str):
+    with _conn() as con:
+        con.execute(
+            "INSERT INTO notifications (id, message, read, created_at) "
+            "VALUES (?, ?, 0, datetime('now'))",
+            (str(uuid.uuid4()), message)
+        )
 
 def check_event_reminders():
     now = _now()
