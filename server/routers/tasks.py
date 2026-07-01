@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from server.auth import verify_token
-from app.memory.store import list_boards, add_board, delete_board, list_todos_by_board, add_todo_to_board, set_todo_done, delete_todo_by_id
+from app.features.tasks import list_boards, add_board, delete_board, list_todos_by_board, add_todo_to_board, set_todo_done, delete_todo_by_id
 
 router = APIRouter()
 
