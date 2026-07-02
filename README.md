@@ -13,6 +13,7 @@ Jarvis is a fully local, API-driven assistant designed to handle real personal p
 ### Requirements
 
 - Python 3.12+
+- Docker + Docker Compose (for production-style local runs)
 - Anthropic API key (for Claude Haiku intent parsing)
 - Optional: football-data.org API key
 
@@ -32,21 +33,23 @@ ANTHROPIC_API_KEY=your_key_here
 JARVIS_API_TOKEN=your_bearer_token
 FOOTBALL_API_KEY=your_key_here       # optional
 TIMEZONE=Europe/Lisbon
+MEMORY_FILE=data/memory              # defaults to data/memory (→ data/memory.db)
 ```
 
-### Running locally
+### Running locally (Python)
 
 ```bash
 python -m uvicorn server.main:app --host 0.0.0.0 --port 8000
 ```
 
-### Running via systemd (production)
+### Running locally (Docker)
 
 ```bash
-sudo systemctl start jarvis
-sudo systemctl status jarvis
-journalctl -u jarvis -f
+docker compose build
+docker compose up -d
 ```
+
+The container binds `./data` on the host to `/app/data` inside the container, so the SQLite database and caches persist across rebuilds and restarts.
 
 ### Running tests
 
@@ -99,7 +102,8 @@ jarvis/
 │       ├── calendar.py     # GET /events
 │       ├── weather.py      # GET /weather
 │       ├── timers.py       # GET /timers
-│       └── notifications.py # GET /notifications
+│       ├── notifications.py # GET /notifications
+│       └── deploy.py       # POST /deploy — CI-triggered self-deploy (bearer-secret protected)
 │
 ├── cli/
 │   └── main.py             # local terminal interface for testing
@@ -108,15 +112,20 @@ jarvis/
 │   └── test_api.py         # integration tests against an isolated test DB
 │
 ├── data/
-│   ├── memory.db           # SQLite database (git-ignored)
-│   ├── cache/               # cached external API responses (git-ignored)
-│   └── plots/               # generated Plotly HTML files (git-ignored)
+│   ├── memory.db            # SQLite database (git-ignored, host-mounted volume)
+│   ├── memory.json          # legacy/auxiliary memory file (git-ignored)
+│   ├── cache/                # cached external API responses (git-ignored)
+│   └── plots/                 # generated Plotly HTML files (git-ignored)
 │
+├── dockerfile
+├── docker-compose.yml
 ├── config.py
 └── requirements.txt
 ```
 
 Each feature under `app/features/` owns its own logic end-to-end — data access, formatting for chat, and (where relevant) a structured-data function consumed directly by its matching router in `server/routers/`. Adding a new feature means adding one file to each folder, not editing a growing central file.
+
+> **Note on `data/`:** `memory.db` and `memory.json` are intentionally git-ignored and were fully untracked from history. They hold live, growing user data and must never be committed — a merge conflict on a tracked binary DB file previously caused real data loss during a deploy. The database lives only on each machine's disk (or the VM's bind-mounted volume) and is not synced via git under any circumstances.
 
 ---
 
@@ -149,55 +158,96 @@ Context is passed explicitly through the call chain — no global state, safe fo
 
 ## Deployment
 
-The backend runs on a Proxmox VM (Ubuntu Server 24.04), accessed remotely via Tailscale.
+The backend runs in Docker on a Proxmox VM (Ubuntu Server 24.04), accessed via Tailscale. Production runs as a Docker Compose service rather than a bare systemd process.
 
 - **Tailscale IP:** `<your-tailscale-ip>`
 - **Port:** `8000`
 - **Service user:** `jarvisserver`
-- **Service file:** `/etc/systemd/system/jarvis.service`
+- **Compose service:** `backend` (container name `jarvis-backend`)
+- **Data volume:** `/home/jarvisserver/jarvis/data` → `/app/data` (bind mount — this is what makes the database persist across deploys)
 
-### systemd service
+### docker-compose.yml (excerpt)
 
-```ini
-[Unit]
-Description=Jarvis AI Assistant
-After=network.target
-
-[Service]
-Type=simple
-User=jarvisserver
-WorkingDirectory=/home/jarvisserver/jarvis
-ExecStart=/usr/bin/python3 -m uvicorn server.main:app --host 0.0.0.0 --port 8000
-Restart=always
-RestartSec=5
-EnvironmentFile=/home/jarvisserver/jarvis/.env
-
-[Install]
-WantedBy=multi-user.target
+```yaml
+services:
+  backend:
+    build: .
+    container_name: jarvis-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - type: bind
+        source: /home/jarvisserver/jarvis/data
+        target: /app/data
+    env_file: .env
+    restart: unless-stopped
 ```
 
-### CI
+### Manual deploy (on the VM)
 
-Every push to `main` runs the full integration test suite via GitHub Actions (`.github/workflows/test.yml`), against an isolated test database — never the production one.
+```bash
+cd ~/jarvis
+git pull
+docker compose build
+docker compose up -d
+```
+
+---
+
+## CI/CD
+
+Every push to `main` runs the full integration test suite via GitHub Actions (`.github/workflows/test.yml`), against an isolated test database — never the production one. If tests pass, a second job deploys automatically:
+
+```
+push to main
+   │
+   ▼
+run pytest suite (isolated test DB)
+   │  (only if tests pass)
+   ▼
+join the tailnet (Tailscale GitHub Action, OAuth client)
+   │
+   ▼
+SSH into the VM over Tailscale
+   │
+   ▼
+git pull && docker compose build && docker compose up -d
+```
+
+**Tailscale connectivity:** the runner authenticates using a Tailscale OAuth client scoped to `Keys → Auth Keys → Write`, tagged `tag:ci`. The client secret doesn't expire (unlike plain auth keys, capped at 90 days), so no manual rotation is needed.
+
+**Deploy auth:** the SSH key used by the workflow is scoped to a dedicated `deploy`-capable user on the VM, reachable only over the tailnet — never exposed publicly.
+
+**Required GitHub repo secrets:**
+
+| Secret | Purpose |
+|---|---|
+| `JARVIS_API_TOKEN` | Bearer token used by the test suite |
+| `TS_OAUTH_CLIENT_ID` | Tailscale OAuth client ID |
+| `TS_OAUTH_CLIENT_SECRET` | Tailscale OAuth client secret |
+| `VM_HOST` | Tailscale IP/hostname of the deploy VM |
+| `VM_USER` | SSH user on the VM |
+| `VM_SSH_KEY` | Private key for the deploy user |
 
 ---
 
 ## Stack
 
-| Layer          | Tech                              |
-|----------------|------------------------------------|
-| Language       | Python 3.12                       |
-| API server     | FastAPI + Uvicorn                 |
-| Intent parsing | Claude Haiku (Anthropic)          |
-| Memory         | SQLite (WAL mode)                 |
-| Maths          | SymPy + Plotly                    |
-| Weather        | Open-Meteo (no key needed)        |
-| Football       | football-data.org                 |
-| Testing        | pytest + httpx                    |
-| CI             | GitHub Actions                    |
-| Deployment     | Proxmox VM + systemd + Tailscale  |
+| Layer          | Tech                                        |
+|----------------|-----------------------------------------------|
+| Language       | Python 3.12                                   |
+| API server     | FastAPI + Uvicorn                             |
+| Intent parsing | Claude Haiku (Anthropic)                      |
+| Memory         | SQLite (WAL mode)                             |
+| Maths          | SymPy + Plotly                                |
+| Weather        | Open-Meteo (no key needed)                    |
+| Football       | football-data.org                             |
+| Testing        | pytest + httpx                                |
+| CI/CD          | GitHub Actions (test → Tailscale → SSH deploy) |
+| Containerization | Docker + Docker Compose                     |
+| Networking     | Tailscale (OAuth client, tagged CI node)      |
+| Deployment     | Proxmox VM + Docker Compose + Tailscale       |
 
 ---
-
 
 *Built by Luís Soares*
