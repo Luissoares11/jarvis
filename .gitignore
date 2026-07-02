@@ -8,3 +8,4 @@ __pycache__/
 *.pycdata/*.db
 data/cache/
 logs/
+data/memory.db
