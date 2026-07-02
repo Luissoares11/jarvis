@@ -9,3 +9,4 @@ __pycache__/
 data/cache/
 logs/
 data/memory.db
+data/memory.json
