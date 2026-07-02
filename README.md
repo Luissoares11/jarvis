@@ -102,8 +102,7 @@ jarvis/
 │       ├── calendar.py     # GET /events
 │       ├── weather.py      # GET /weather
 │       ├── timers.py       # GET /timers
-│       ├── notifications.py # GET /notifications
-│       └── deploy.py       # POST /deploy — CI-triggered self-deploy (bearer-secret protected)
+│       └── notifications.py # GET /notifications
 │
 ├── cli/
 │   └── main.py             # local terminal interface for testing
