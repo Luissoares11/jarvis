@@ -5,4 +5,7 @@ data/*.db
 data/cache/
 logs/
 __pycache__/
-*.pyc
+*.pycdata/*.db
+data/cache/
+logs/
+data/memory.db
