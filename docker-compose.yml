@@ -1,0 +1,29 @@
+services:
+  backend:
+    # Build the image from the Dockerfile in the current directory
+    build: .
+
+    # Name the container
+    container_name: jarvis-backend
+
+    # Map port 8000 on your machine to port 8000 inside the container
+    # Format is host:container — so localhost:8000 hits the container
+    ports:
+      - "8000:8000"
+
+    # Environment variables passed into the container
+    # These replace your .env file inside the container
+    environment:
+      - JARVIS_API_TOKEN=${JARVIS_API_TOKEN}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - FOOTBALL_DATA_APIKEY=${FOOTBALL_DATA_APIKEY}
+
+    # Volumes — persist data outside the container on your host disk
+    # Left side = path on your machine, right side = path in container
+    # This means data/memory.db survives container rebuilds
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+
+    # Restart automatically if it crashes
+    restart: unless-stopped
