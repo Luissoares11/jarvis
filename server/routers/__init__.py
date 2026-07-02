@@ -1,1 +1,1 @@
-from . import chat, weather, tasks, calendar, timers, notifications, deploy
+from . import chat, weather, tasks, calendar, timers, notifications
