@@ -37,20 +37,10 @@ jobs:
     if: github.event_name == 'push'
 
     steps:
-      - name: Set up SSH
+      - name: Trigger deploy
         run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          echo "Key written, scanning host..."
-          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts || echo "ssh-keyscan failed"
-          echo "Done"
-
-      - name: Deploy to VM
-        run: |
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
-            cd ~/jarvis
-            git pull
-            docker compose build
-            docker compose up -d
-          EOF
+          curl -X POST http://${{ secrets.VM_HOST }}:8000/deploy \
+            -H "x-deploy-secret: ${{ secrets.DEPLOY_SECRET }}" \
+            --fail \
+            --silent \
+            --show-error

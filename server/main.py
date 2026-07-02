@@ -11,7 +11,7 @@ from app.actions.notifications import check_event_reminders
 load_dotenv()
 
 from app.memory.store import init_db, _ensure_todo_columns
-from server.routers import chat, weather, tasks, calendar, timers, notifications
+from server.routers import chat, weather, tasks, calendar, timers, notifications, deploy
 
 async def _reminder_loop():
     while True:
@@ -45,6 +45,7 @@ app.include_router(tasks.router)
 app.include_router(calendar.router)
 app.include_router(timers.router)
 app.include_router(notifications.router)
+app.include_router(deploy.router)
 
 
 @app.get("/")
