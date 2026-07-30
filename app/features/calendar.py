@@ -30,17 +30,19 @@ def add_event(
     event_type: str = "other",
     notes: str = "",
     reminder_offsets: list[int] | None = None,
+    recurrence: str = "none",
 ) -> str:
     try:
         dt = _parse_datetime(date_str, time_str)
         dt_end = dt + timedelta(hours=1)
         type_label = EVENT_TYPES.get(event_type.lower(), "📅 Event")
         event_id = str(uuid.uuid4())
+        recurrence = recurrence if recurrence in ("yearly", "monthly", "weekly") else None
 
         with _conn() as con:
             con.execute(
-                "INSERT INTO events (id, title, type, start_time, end_time, notes, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+                "INSERT INTO events (id, title, type, start_time, end_time, notes, recurrence, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
                 (
                     event_id,
                     title,
@@ -48,6 +50,7 @@ def add_event(
                     dt.isoformat(),
                     dt_end.isoformat(),
                     notes,
+                    recurrence,
                 )
             )
 
@@ -55,7 +58,8 @@ def add_event(
             for offset in reminder_offsets:
                 add_event_reminder(event_id, offset)
 
-        return f"Added {type_label} '{title}' on {dt.strftime('%d %b at %H:%M')}."
+        suffix = f" (repeats {recurrence})" if recurrence else ""
+        return f"Added {type_label} '{title}' on {dt.strftime('%d %b at %H:%M')}{suffix}."
     except ValueError as e:
         return str(e)
     except Exception as e:
@@ -119,37 +123,64 @@ def edit_event(
         return f"I couldn't update that event: {e}"
 
 
+def _next_occurrence(dt: datetime, recurrence: str, now: datetime) -> datetime:
+    """Roll a recurring event's date forward to its next occurrence on/after `now`."""
+    occ = dt
+    if recurrence == "yearly":
+        while occ < now:
+            occ = occ.replace(year=occ.year + 1)
+    elif recurrence == "monthly":
+        while occ < now:
+            month = occ.month + 1
+            year = occ.year + (month - 1) // 12
+            month = ((month - 1) % 12) + 1
+            occ = occ.replace(year=year, month=month)
+    elif recurrence == "weekly":
+        while occ < now:
+            occ = occ + timedelta(weeks=1)
+    return occ
+
+
 def list_events(days_ahead: int = 30, include_past: bool = False, all_events: bool = False) -> str:
     now = _now()
     until = now + timedelta(days=days_ahead)
 
     with _conn() as con:
         rows = con.execute(
-            "SELECT title, type, start_time, notes FROM events ORDER BY start_time"
+            "SELECT title, type, start_time, notes, recurrence FROM events ORDER BY start_time"
         ).fetchall()
 
+    def effective_dt(row):
+        dt = datetime.fromisoformat(row["start_time"])
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ZoneInfo(TIMEZONE))
+        if row["recurrence"] and dt < now:
+            dt = _next_occurrence(dt, row["recurrence"], now)
+        return dt
+
     if all_events:
-        pass
+        display = [(row, datetime.fromisoformat(row["start_time"])) for row in rows]
     elif include_past:
         filtered = []
         for row in rows:
-            dt = datetime.fromisoformat(row["start_time"])
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=ZoneInfo(TIMEZONE))
-            if dt < now:
-                filtered.append(row)
-        rows = sorted(filtered, key=lambda r: r["start_time"], reverse=True)[:20]
+            dt = effective_dt(row)
+            orig = datetime.fromisoformat(row["start_time"])
+            if orig.tzinfo is None:
+                orig = orig.replace(tzinfo=ZoneInfo(TIMEZONE))
+            if orig < now and not row["recurrence"]:
+                filtered.append((row, orig))
+        filtered.sort(key=lambda x: x[1], reverse=True)
+        display = filtered[:20]
     else:
         filtered = []
         for row in rows:
-            dt = datetime.fromisoformat(row["start_time"])
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=ZoneInfo(TIMEZONE))
+            dt = effective_dt(row)
             if now <= dt <= until:
-                filtered.append(row)
-        rows = filtered
+                filtered.append((row, dt))
+        filtered.sort(key=lambda x: x[1])
+        display = filtered
 
-    if not rows:
+    if not display:
         if include_past:
             return "No past events found."
         if all_events:
@@ -163,10 +194,10 @@ def list_events(days_ahead: int = 30, include_past: bool = False, all_events: bo
     else:
         lines = [f"Events in the next {days_ahead} days:"]
 
-    for row in rows:
-        dt = datetime.fromisoformat(row["start_time"])
+    for row, dt in display:
         type_label = EVENT_TYPES.get(row["type"], "📅 Event")
-        lines.append(f"  - {dt.strftime('%d %b %Y %H:%M')} — {type_label}: {row['title']}")
+        rec_tag = f" 🔁{row['recurrence']}" if row["recurrence"] else ""
+        lines.append(f"  - {dt.strftime('%d %b %Y %H:%M')} — {type_label}: {row['title']}{rec_tag}")
         if row["notes"]:
             lines.append(f"    {row['notes']}")
     return "\n".join(lines)

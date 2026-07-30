@@ -11,6 +11,17 @@ from .memory.store import (
     db_get_all_confirmed_patterns,
 )
 
+_NO_CACHE_ACTIONS = {
+    "action_add_event", "action_edit_event", "action_delete_event", "action_list_events",
+    "action_add_task", "action_delete_task", "action_complete_task", "action_list_tasks",
+    "action_set_timer", "action_set_alarm",
+    "compute_calculate", "compute_derivative", "compute_integral", "compute_limit",
+    "compute_solve", "compute_convert", "compute_plot", "compute_plot_implicit",
+    "external_weather", "external_fixtures", "external_results", "external_standings",
+    "store_fact", "store_person_relation", "query_fact", "query_entity",
+    "delete_fact", "delete_entity", "set_collection", "query_collection",
+}
+
 
 SYSTEM_PROMPT = """You are the intent parser for Jarvis, a personal AI assistant.
 
@@ -107,8 +118,11 @@ Task/board rules:
 - For action_complete_task / action_delete_task: "ref" should be the task text as closely as the user said it, not the board name.
 
 Calendar rules:
-- For events (exam, meeting, etc.): if no date is given, return {"action": "unknown"} — do not guess.
-- For events, extract a meaningful title from the input. Never use just the event type as the title.
+- The "no date → unknown" rule applies ONLY to action_add_event. It never applies to action_list_events, action_delete_event, or action_edit_event.
+- For action_add_event: if no date is given, return {"action": "unknown"} — do not guess.
+- For action_add_event, extract a meaningful title from the input. Never use just the event type as the title.
+- If a date is given without a year (e.g. "10 january"), assume the next upcoming occurrence: this year if that date hasn't passed yet, otherwise next year.
+- For action_list_events: "next year" → days: 365. "next month" / "next 30 days" → days: 30. No timeframe mentioned at all → days: 30 (default). Never return unknown for a list request just because no specific date was mentioned.
 
 Memory vs. action disambiguation:
 - "Remember that X" (a statement of fact, no time attached) is always a memory store, e.g. "remember that my sister's birthday is in June" → store_fact, not an event.
@@ -249,20 +263,20 @@ def interpret(user_input: str) -> dict:
         return hardcoded
 
     exact = db_get_exact_pattern(phrase)
-    if exact:
+    if exact and exact.get("action") not in _NO_CACHE_ACTIONS:
         return exact
 
     all_patterns = db_get_all_confirmed_patterns()
     fuzzy = _fuzzy_match(phrase, all_patterns)
     if fuzzy:
         action = _call_llm(user_input)
-        if action.get("action") not in ("unknown", None):
+        if action.get("action") not in ("unknown", None) and action.get("action") not in _NO_CACHE_ACTIONS:
             db_save_pattern(phrase, action, confirmed=True)
         return action
 
     action = _call_llm(user_input)
 
-    if action.get("action") not in ("unknown", None):
+    if action.get("action") not in ("unknown", None) and action.get("action") not in _NO_CACHE_ACTIONS:
         db_save_pattern(phrase, action, confirmed=True)
 
     return action
